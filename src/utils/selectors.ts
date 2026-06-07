@@ -1,4 +1,5 @@
 import type { AppData, ISODateString } from '@/models/types';
+import { toISODate } from '@/utils/date';
 
 /** Filters any dated entry list down to a single date. */
 function onDate<T extends { date: ISODateString }>(
@@ -56,4 +57,45 @@ export function summarizeDay(
     avgMood,
     sleepMinutes,
   };
+}
+
+const GOALS = { caloriesOut: 500, steps: 10000, sleepMin: 480 };
+
+export interface Readiness {
+  score: number; // 0..100
+  sleep: number; // 0..100 subscore
+  activity: number;
+  mind: number;
+  caption: string;
+}
+
+/** Blends recovery signals into a single 0–100 readiness score. */
+export function computeReadiness(data: AppData, date: ISODateString): Readiness {
+  const s = summarizeDay(data, date);
+  const sleep = Math.round(Math.min(1, s.sleepMinutes / GOALS.sleepMin) * 100);
+  const activity = Math.round(
+    Math.min(1, (s.caloriesOut / GOALS.caloriesOut) * 0.5 + (s.steps / GOALS.steps) * 0.5) * 100,
+  );
+  const mind = s.avgMood != null ? Math.round((s.avgMood / 5) * 100) : 60;
+  const score = Math.round(sleep * 0.4 + activity * 0.35 + mind * 0.25);
+  const caption =
+    score >= 80 ? 'Primed — go for it' : score >= 60 ? 'Solid — train as planned' : score >= 40 ? 'Take it easy today' : 'Prioritize recovery';
+  return { score, sleep, activity, mind, caption };
+}
+
+/** Consecutive days (ending today or yesterday) with at least one logged entry. */
+export function computeStreak(data: AppData): number {
+  const days = new Set<ISODateString>();
+  for (const list of [data.meals, data.exercises, data.moods, data.sleep]) {
+    for (const e of list as { date: ISODateString }[]) days.add(e.date);
+  }
+  let streak = 0;
+  const cursor = new Date();
+  // Allow the streak to "start" today or yesterday.
+  if (!days.has(toISODate(cursor))) cursor.setDate(cursor.getDate() - 1);
+  while (days.has(toISODate(cursor))) {
+    streak++;
+    cursor.setDate(cursor.getDate() - 1);
+  }
+  return streak;
 }

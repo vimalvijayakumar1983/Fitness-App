@@ -1,6 +1,6 @@
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { NavigationContainer } from '@react-navigation/native';
+import { NavigationContainer, DefaultTheme, Theme } from '@react-navigation/native';
 import {
   createBottomTabNavigator,
   BottomTabBarProps,
@@ -65,9 +65,22 @@ function FloatingTabBar({ state, navigation }: BottomTabBarProps) {
   );
 }
 
+const navTheme: Theme = {
+  ...DefaultTheme,
+  dark: true,
+  colors: {
+    ...DefaultTheme.colors,
+    background: colors.background,
+    card: colors.surface,
+    text: colors.text,
+    border: colors.border,
+    primary: colors.primary,
+  },
+};
+
 export function RootNavigator() {
   return (
-    <NavigationContainer>
+    <NavigationContainer theme={navTheme}>
       <Tab.Navigator
         screenOptions={{ headerShown: false }}
         tabBar={(props) => <FloatingTabBar {...props} />}

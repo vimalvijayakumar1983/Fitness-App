@@ -6,16 +6,17 @@ import { Card } from '@/components/Card';
 import { StatTile } from '@/components/StatTile';
 import { ActivityRing } from '@/components/ActivityRing';
 import { ProgressBar } from '@/components/ProgressBar';
-import { Sparkline } from '@/components/Sparkline';
+import { ReadinessGauge } from '@/components/ReadinessGauge';
+import { BarChart } from '@/components/BarChart';
 import { EntryRow } from '@/components/EntryRow';
 import { useData } from '@/context/DataContext';
-import { colors, gradients, radius, shadow, spacing, type } from '@/theme/colors';
-import { summarizeDay } from '@/utils/selectors';
+import { colors, gradients, hexA, glow, radius, shadow, spacing, type } from '@/theme/colors';
+import { summarizeDay, computeReadiness, computeStreak } from '@/utils/selectors';
 import { formatDuration, todayISO, toISODate } from '@/utils/date';
 
 const MOOD_FACES = ['😞', '😕', '😐', '🙂', '😄'];
+const DAY_INITIALS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
 
-// Sensible default goals for the rings until backend goals are wired in.
 const GOALS = { caloriesOut: 500, steps: 10000, sleepMin: 480 };
 
 function greeting(): string {
@@ -38,11 +39,24 @@ function stepsSeries(exercises: { date: string; steps?: number }[], n: number): 
   return out;
 }
 
+/** Labels (day initials) for the last `n` days, oldest→newest. */
+function dayLabels(n: number): string[] {
+  const out: string[] = [];
+  for (let i = n - 1; i >= 0; i--) {
+    const d = new Date();
+    d.setDate(d.getDate() - i);
+    out.push(DAY_INITIALS[d.getDay()]);
+  }
+  return out;
+}
+
 export function DashboardScreen() {
   const { data, syncHealthData } = useData();
   const [refreshing, setRefreshing] = useState(false);
   const today = todayISO();
   const s = summarizeDay(data, today);
+  const readiness = computeReadiness(data, today);
+  const streak = computeStreak(data);
 
   const onRefresh = async () => {
     setRefreshing(true);
@@ -60,9 +74,10 @@ export function DashboardScreen() {
   });
 
   const series = stepsSeries(data.exercises, 7);
+  const labels = dayLabels(7);
   const hasTrend = series.some((v) => v > 0);
+  const weeklyAvg = Math.round(series.reduce((a, b) => a + b, 0) / 7);
 
-  // Merge recent entries into a single timeline.
   const timeline = [
     ...data.meals.filter((m) => m.date === today).map((m) => ({
       key: m.id,
@@ -114,47 +129,70 @@ export function DashboardScreen() {
         </View>
       }
     >
-      {/* Hero: concentric activity rings + legend */}
+      {/* Streak chip */}
+      {streak > 0 ? (
+        <View style={styles.streakRow}>
+          <View style={styles.streakChip}>
+            <Text style={styles.streakEmoji}>🔥</Text>
+            <Text style={styles.streakText}>{streak}-day streak</Text>
+          </View>
+        </View>
+      ) : null}
+
+      {/* Hero: Readiness score gauge + subscores */}
       <LinearGradient
         colors={gradients.hero as unknown as string[]}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
         style={styles.hero}
       >
-        <View style={styles.ringStack}>
-          <ActivityRing
-            progress={s.caloriesOut / GOALS.caloriesOut}
-            size={132}
-            strokeWidth={13}
-            colors={gradients.exercise}
-            trackColor="rgba(79,168,126,0.18)"
-          />
-          <View style={styles.ringAbs}>
-            <ActivityRing
-              progress={s.steps / GOALS.steps}
-              size={100}
-              strokeWidth={13}
-              colors={gradients.coral}
-              trackColor="rgba(232,137,107,0.18)"
-            />
-          </View>
-          <View style={styles.ringAbs}>
-            <ActivityRing
-              progress={s.sleepMinutes / GOALS.sleepMin}
-              size={68}
-              strokeWidth={13}
-              colors={gradients.sleep}
-              trackColor="rgba(91,127,209,0.18)"
-            />
-          </View>
+        <View style={[styles.gaugeWrap, glow(colors.primary, 0.35)]}>
+          <ReadinessGauge score={readiness.score} caption={readiness.caption} size={208} />
         </View>
-
-        <View style={styles.legend}>
-          <Legend color={colors.exercise} label="Move" value={`${s.caloriesOut} / ${GOALS.caloriesOut} kcal`} />
-          <Legend color={colors.meal} label="Steps" value={`${s.steps.toLocaleString()} / ${(GOALS.steps / 1000)}k`} />
-          <Legend color={colors.sleep} label="Sleep" value={s.sleepMinutes ? `${formatDuration(s.sleepMinutes)} / 8h` : '— / 8h'} />
+        <View style={styles.subscores}>
+          <Subscore label="Sleep" value={readiness.sleep} color={colors.sleep} />
+          <Subscore label="Activity" value={readiness.activity} color={colors.exercise} />
+          <Subscore label="Mind" value={readiness.mind} color={colors.mind} />
         </View>
       </LinearGradient>
+
+      {/* Activity rings */}
+      <Card title="Activity rings">
+        <View style={styles.ringsCard}>
+          <View style={styles.ringStack}>
+            <ActivityRing
+              progress={s.caloriesOut / GOALS.caloriesOut}
+              size={128}
+              strokeWidth={12}
+              colors={gradients.exercise}
+              trackColor="rgba(255,255,255,0.06)"
+            />
+            <View style={styles.ringAbs}>
+              <ActivityRing
+                progress={s.steps / GOALS.steps}
+                size={98}
+                strokeWidth={12}
+                colors={gradients.coral}
+                trackColor="rgba(255,255,255,0.06)"
+              />
+            </View>
+            <View style={styles.ringAbs}>
+              <ActivityRing
+                progress={s.sleepMinutes / GOALS.sleepMin}
+                size={68}
+                strokeWidth={12}
+                colors={gradients.sleep}
+                trackColor="rgba(255,255,255,0.06)"
+              />
+            </View>
+          </View>
+          <View style={styles.legend}>
+            <Legend color={colors.exercise} label="Move" value={`${s.caloriesOut} / ${GOALS.caloriesOut} kcal`} />
+            <Legend color={colors.accent} label="Steps" value={`${s.steps.toLocaleString()} / ${GOALS.steps / 1000}k`} />
+            <Legend color={colors.sleep} label="Sleep" value={s.sleepMinutes ? `${formatDuration(s.sleepMinutes)} / 8h` : '— / 8h'} />
+          </View>
+        </View>
+      </Card>
 
       {/* Quick metrics */}
       <View style={styles.grid}>
@@ -169,6 +207,18 @@ export function DashboardScreen() {
         />
       </View>
 
+      {/* Weekly steps bar chart */}
+      <Card
+        title="Steps · this week"
+        trailing={<Text style={styles.avgPill}>avg {weeklyAvg.toLocaleString()}</Text>}
+      >
+        {hasTrend ? (
+          <BarChart data={series} labels={labels} colors={gradients.exercise} goal={GOALS.steps} height={130} />
+        ) : (
+          <Text style={styles.hint}>Sync your watch or log a workout to see your weekly trend.</Text>
+        )}
+      </Card>
+
       {/* Energy balance */}
       <Card title="Energy balance">
         <Text style={type.metric}>
@@ -176,31 +226,19 @@ export function DashboardScreen() {
           {calBalance}
           <Text style={styles.kcal}> kcal</Text>
         </Text>
-        <Text style={styles.balanceHint}>
+        <Text style={styles.hint}>
           {s.caloriesIn} eaten · {s.caloriesOut} burned
         </Text>
         <View style={{ marginTop: spacing.lg }}>
-          <ProgressBar
-            progress={s.caloriesIn / (GOALS.caloriesOut + 2000)}
-            colors={gradients.coral}
-          />
+          <ProgressBar progress={s.caloriesIn / (GOALS.caloriesOut + 2000)} colors={gradients.coral} />
         </View>
-      </Card>
-
-      {/* Steps trend */}
-      <Card title="Steps · last 7 days">
-        {hasTrend ? (
-          <Sparkline data={series} width={300} height={70} color={colors.exercise} fillColors={gradients.exercise} />
-        ) : (
-          <Text style={styles.balanceHint}>Sync your watch or log a workout to see your trend.</Text>
-        )}
       </Card>
 
       {/* Today timeline */}
       <Text style={[type.sectionTitle, styles.timelineTitle]}>Today's activity</Text>
       {timeline.length === 0 ? (
         <Card>
-          <Text style={styles.balanceHint}>Nothing logged yet. Pull down to sync your smartwatch, or add a meal.</Text>
+          <Text style={styles.hint}>Nothing logged yet. Pull down to sync your smartwatch, or add a meal.</Text>
         </Card>
       ) : (
         timeline.map((t) => (
@@ -215,6 +253,18 @@ export function DashboardScreen() {
         ))
       )}
     </ScreenContainer>
+  );
+}
+
+function Subscore({ label, value, color }: { label: string; value: number; color: string }) {
+  return (
+    <View style={styles.subscore}>
+      <View style={styles.subscoreHead}>
+        <Text style={styles.subscoreLabel}>{label}</Text>
+        <Text style={[styles.subscoreVal, { color }]}>{value}</Text>
+      </View>
+      <ProgressBar progress={value / 100} colors={[color, color]} height={5} />
+    </View>
   );
 }
 
@@ -242,15 +292,38 @@ const styles = StyleSheet.create({
   },
   avatarText: { color: colors.textInverse, fontSize: 18, fontWeight: '700' },
 
-  hero: {
+  streakRow: { flexDirection: 'row', marginBottom: spacing.md },
+  streakChip: {
     flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.accentSoft,
+    borderRadius: radius.pill,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderWidth: 1,
+    borderColor: hexA(colors.accent, 0.3),
+  },
+  streakEmoji: { fontSize: 14, marginRight: 6 },
+  streakText: { ...type.label, color: colors.accent, letterSpacing: 0.3 },
+
+  hero: {
     alignItems: 'center',
     borderRadius: radius.xl,
     padding: spacing.xl,
     marginBottom: spacing.md,
+    borderWidth: 1,
+    borderColor: colors.glassBorder,
     ...shadow.md,
   },
-  ringStack: { width: 132, height: 132, alignItems: 'center', justifyContent: 'center' },
+  gaugeWrap: { borderRadius: radius.pill, marginBottom: spacing.lg },
+  subscores: { flexDirection: 'row', gap: spacing.lg, width: '100%' },
+  subscore: { flex: 1 },
+  subscoreHead: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 6 },
+  subscoreLabel: { ...type.label, color: colors.textSecondary },
+  subscoreVal: { fontSize: 15, fontWeight: '700' },
+
+  ringsCard: { flexDirection: 'row', alignItems: 'center' },
+  ringStack: { width: 128, height: 128, alignItems: 'center', justifyContent: 'center' },
   ringAbs: { position: 'absolute', alignItems: 'center', justifyContent: 'center' },
   legend: { flex: 1, marginLeft: spacing.xl, gap: spacing.md },
   legendRow: { flexDirection: 'row', alignItems: 'center' },
@@ -260,8 +333,9 @@ const styles = StyleSheet.create({
 
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.md, marginBottom: spacing.md },
 
+  avgPill: { ...type.caption, color: colors.textSecondary, fontWeight: '600' },
   kcal: { ...type.body, color: colors.textSecondary, fontWeight: '400' },
-  balanceHint: { ...type.caption, marginTop: spacing.sm, lineHeight: 19 },
+  hint: { ...type.caption, marginTop: spacing.sm, lineHeight: 19 },
 
   timelineTitle: { marginTop: spacing.sm, marginBottom: spacing.md },
 });
