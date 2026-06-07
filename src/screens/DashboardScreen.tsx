@@ -8,10 +8,11 @@ import { ActivityRing } from '@/components/ActivityRing';
 import { ProgressBar } from '@/components/ProgressBar';
 import { ReadinessGauge } from '@/components/ReadinessGauge';
 import { BarChart } from '@/components/BarChart';
+import { MacroSummary } from '@/components/MacroSummary';
 import { EntryRow } from '@/components/EntryRow';
 import { useData } from '@/context/DataContext';
 import { colors, gradients, hexA, glow, radius, shadow, spacing, type } from '@/theme/colors';
-import { summarizeDay, computeReadiness, computeStreak } from '@/utils/selectors';
+import { summarizeDay, summarizeMacros, waterMl, computeReadiness, computeStreak } from '@/utils/selectors';
 import { formatDuration, todayISO, toISODate } from '@/utils/date';
 
 const MOOD_FACES = ['😞', '😕', '😐', '🙂', '😄'];
@@ -55,6 +56,8 @@ export function DashboardScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const today = todayISO();
   const s = summarizeDay(data, today);
+  const macros = summarizeMacros(data, today);
+  const water = waterMl(data, today);
   const readiness = computeReadiness(data, today);
   const streak = computeStreak(data);
 
@@ -194,11 +197,20 @@ export function DashboardScreen() {
         </View>
       </Card>
 
+      {/* Nutrition macros */}
+      <Card title="Nutrition">
+        <MacroSummary
+          totals={macros}
+          calorieTarget={data.profile.calorieTarget}
+          macroTargets={data.profile.macroTargets}
+        />
+      </Card>
+
       {/* Quick metrics */}
       <View style={styles.grid}>
         <StatTile emoji="🍽️" label="Calories in" value={`${s.caloriesIn}`} unit="kcal" gradient={gradients.meal} />
         <StatTile emoji="🔥" label="Active time" value={formatDuration(s.exerciseMinutes)} gradient={gradients.exercise} />
-        <StatTile emoji="💧" label="Water" value="—" unit="L" gradient={gradients.water} />
+        <StatTile emoji="💧" label="Water" value={(water / 1000).toFixed(1)} unit="L" gradient={gradients.water} />
         <StatTile
           emoji="🧠"
           label="Mood"

@@ -12,6 +12,7 @@ import {
   ExerciseEntry,
   MealEntry,
   MoodEntry,
+  Profile,
   SleepEntry,
 } from '@/models/types';
 import { loadAppData, saveAppData } from '@/services/storage';
@@ -26,9 +27,13 @@ interface DataContextValue {
   addExercise: (exercise: Omit<ExerciseEntry, 'id' | 'loggedAt'>) => void;
   addMood: (mood: Omit<MoodEntry, 'id' | 'loggedAt'>) => void;
   addSleep: (sleep: Omit<SleepEntry, 'id' | 'loggedAt'>) => void;
+  addWater: (ml: number, date?: string) => void;
+
+  updateProfile: (patch: Partial<Profile>) => void;
+  toggleFavoriteFood: (foodId: string) => void;
 
   removeEntry: (
-    kind: 'meals' | 'exercises' | 'moods' | 'sleep',
+    kind: 'meals' | 'exercises' | 'moods' | 'sleep' | 'water',
     id: string,
   ) => void;
 
@@ -104,8 +109,31 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     }));
   }, []);
 
+  const addWater = useCallback((ml: number, date: string = todayISO()) => {
+    setData((prev) => ({
+      ...prev,
+      water: [
+        { id: makeId(), date, loggedAt: new Date().toISOString(), ml },
+        ...prev.water,
+      ],
+    }));
+  }, []);
+
+  const updateProfile = useCallback((patch: Partial<Profile>) => {
+    setData((prev) => ({ ...prev, profile: { ...prev.profile, ...patch } }));
+  }, []);
+
+  const toggleFavoriteFood = useCallback((foodId: string) => {
+    setData((prev) => ({
+      ...prev,
+      favoriteFoodIds: prev.favoriteFoodIds.includes(foodId)
+        ? prev.favoriteFoodIds.filter((id) => id !== foodId)
+        : [foodId, ...prev.favoriteFoodIds],
+    }));
+  }, []);
+
   const removeEntry = useCallback(
-    (kind: 'meals' | 'exercises' | 'moods' | 'sleep', id: string) => {
+    (kind: 'meals' | 'exercises' | 'moods' | 'sleep' | 'water', id: string) => {
       setData((prev) => ({
         ...prev,
         [kind]: prev[kind].filter((entry) => entry.id !== id),
@@ -151,6 +179,9 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       addExercise,
       addMood,
       addSleep,
+      addWater,
+      updateProfile,
+      toggleFavoriteFood,
       removeEntry,
       syncHealthData,
     }),
@@ -161,6 +192,9 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       addExercise,
       addMood,
       addSleep,
+      addWater,
+      updateProfile,
+      toggleFavoriteFood,
       removeEntry,
       syncHealthData,
     ],

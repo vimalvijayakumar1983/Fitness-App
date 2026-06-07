@@ -99,3 +99,32 @@ export function computeStreak(data: AppData): number {
   }
   return streak;
 }
+
+export interface MacroTotals {
+  calories: number;
+  protein: number;
+  carbs: number;
+  fat: number;
+}
+
+/** Sum calories + macros from all meals logged on `date`. */
+export function summarizeMacros(data: AppData, date: ISODateString): MacroTotals {
+  const totals: MacroTotals = { calories: 0, protein: 0, carbs: 0, fat: 0 };
+  for (const meal of data.meals) {
+    if (meal.date !== date) continue;
+    for (const item of meal.items) {
+      totals.calories += item.calories || 0;
+      totals.protein += item.protein || 0;
+      totals.carbs += item.carbs || 0;
+      totals.fat += item.fat || 0;
+    }
+  }
+  return totals;
+}
+
+/** Total water (ml) logged on `date`. */
+export function waterMl(data: AppData, date: ISODateString): number {
+  return data.water
+    .filter((w) => w.date === date)
+    .reduce((sum, w) => sum + w.ml, 0);
+}

@@ -47,10 +47,26 @@ async function clickByText(page, text) {
   return false;
 }
 
+async function clickByPartialText(page, text) {
+  const handle = await page.evaluateHandle((t) => {
+    const els = [...document.querySelectorAll('div[role="button"], [tabindex], div, span')];
+    return els.reverse().find((e) => e.textContent.trim().includes(t) && e.offsetParent !== null);
+  }, text);
+  const el = handle.asElement();
+  if (el) {
+    await el.click();
+    return true;
+  }
+  return false;
+}
+
 async function typeInto(page, placeholder, value) {
   const el = await page.$(`input[placeholder="${placeholder}"], textarea[placeholder="${placeholder}"]`);
   if (el) {
-    await el.click({ clickCount: 3 });
+    await el.evaluate((node) => {
+      node.focus();
+      node.value = '';
+    });
     await el.type(value, { delay: 10 });
     return true;
   }
@@ -78,13 +94,27 @@ async function typeInto(page, placeholder, value) {
   // 1. Dashboard (empty)
   await shot('1-dashboard-empty.png');
 
-  // 2. Meals — log a meal
+  // 2. Meals — log a meal + water
   await clickByText(page, 'Meals');
   await sleep(600);
   await typeInto(page, 'e.g. Oatmeal with banana', 'Oatmeal with banana');
   await typeInto(page, 'e.g. 320', '320');
-  await clickByText(page, 'Add meal');
+  await clickByText(page, 'Add manually');
+  await sleep(300);
+  await clickByText(page, '+250 ml');
+  await clickByText(page, '+500 ml');
   await shot('2-meals-logged.png');
+
+  // 2b. Food search modal
+  await clickByText(page, '🔍 Search foods');
+  await sleep(700);
+  await typeInto(page, 'Search e.g. chicken, oats, banana', 'chicken');
+  await sleep(400);
+  await clickByText(page, 'Chicken breast, grilled');
+  await sleep(300);
+  await shot('7-food-search.png');
+  await clickByPartialText(page, 'Add 1 item');
+  await sleep(500);
 
   // 3. Exercise — sync mock smartwatch data
   await clickByText(page, 'Exercise');
