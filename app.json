@@ -1,0 +1,33 @@
+{
+  "expo": {
+    "name": "Fitness App",
+    "slug": "fitness-app",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "scheme": "fitnessapp",
+    "splash": {
+      "resizeMode": "contain",
+      "backgroundColor": "#0E7C66"
+    },
+    "assetBundlePatterns": ["**/*"],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.fitnessapp.app",
+      "infoPlist": {
+        "NSHealthShareUsageDescription": "We use your health data to track exercise, steps and sleep.",
+        "NSHealthUpdateUsageDescription": "We log workouts you record in the app back to Apple Health."
+      }
+    },
+    "android": {
+      "package": "com.fitnessapp.app",
+      "permissions": [
+        "android.permission.ACTIVITY_RECOGNITION",
+        "android.permission.health.READ_STEPS",
+        "android.permission.health.READ_EXERCISE",
+        "android.permission.health.READ_SLEEP",
+        "android.permission.health.READ_HEART_RATE"
+      ]
+    }
+  }
+}
