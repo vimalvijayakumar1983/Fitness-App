@@ -1,9 +1,11 @@
 # Fitness App
 
-A mobile-first health & wellness app for tracking the four pillars of daily
-health: **what you eat, how you move, how you feel, and how you sleep.**
+A mobile-first health & wellness app — think HealthifyMe — for tracking the four
+pillars of daily health: **what you eat, how you move, how you feel, and how you
+sleep**, with an **AI coach** and smartwatch integration.
 
-Built with **React Native + Expo + TypeScript**.
+- **Mobile app:** React Native + Expo + TypeScript (this directory)
+- **Backend API:** Node + Express + SQLite + Claude AI coach (`server/`)
 
 ## Features (current scaffold)
 
@@ -52,12 +54,32 @@ npm start         # then press i / a / w for iOS, Android, web
 > First run needs `npx expo install` to align native dependency versions with
 > the installed Expo SDK.
 
-## Roadmap
+## Backend
 
-See the issues / project board for the path toward a world-class app
-(extensive food database & barcode scanning, AI coaching, water & weight
-tracking, plans, social, and live wearable sync). Current code is the
-foundation those features build on.
+A full API lives in [`server/`](./server) — accounts (JWT auth), cloud storage
+for all logs, a searchable **food database** (+ barcode lookup), goals &
+analytics endpoints, and an **AI coach** powered by Claude (chat + photo
+food-logging). See [`server/README.md`](./server/README.md) to run it.
+
+The app talks to it through [`src/services/api.ts`](./src/services/api.ts).
+
+## Roadmap (toward a world-class, HealthifyMe-grade app)
+
+**Done — Phase 1**
+- ✅ Mobile app scaffold: meals, exercise, mood, sleep, dashboard
+- ✅ Health-platform integration layer (Apple Health / Health Connect ready)
+- ✅ Backend: auth, cloud storage, goals, analytics
+- ✅ Food database with search + barcode lookup
+- ✅ AI coach (Claude): chat coaching + snap-a-photo food logging
+
+**Next**
+- Wire the app screens to the backend (auth flow, sync, food search UI)
+- AI coach chat screen + camera-based food logging in-app
+- Weight / water / goals screens and streaks + reminders
+- Analytics charts (weekly/monthly trends) and personalized nudges
+- Live wearable sync (replace the mock health provider with native modules)
+- Barcode scanner UI; expand the food dataset
+- Social: challenges & community; optional human coaching
 
 ## Data & privacy
 
