@@ -1,8 +1,12 @@
 import React from 'react';
-import { Text } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
-import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { colors } from '@/theme/colors';
+import {
+  createBottomTabNavigator,
+  BottomTabBarProps,
+} from '@react-navigation/bottom-tabs';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { colors, radius, shadow, spacing } from '@/theme/colors';
 import { DashboardScreen } from '@/screens/DashboardScreen';
 import { MealsScreen } from '@/screens/MealsScreen';
 import { ExerciseScreen } from '@/screens/ExerciseScreen';
@@ -11,20 +15,53 @@ import { SleepScreen } from '@/screens/SleepScreen';
 
 const Tab = createBottomTabNavigator();
 
-/** Maps each tab to an emoji icon (keeps the scaffold dependency-free). */
-const ICONS: Record<string, string> = {
-  Today: '🏠',
-  Meals: '🍽️',
-  Exercise: '🏃',
-  Mind: '🧠',
-  Sleep: '😴',
+const META: Record<string, { icon: string; tint: string }> = {
+  Today: { icon: '🏠', tint: colors.primary },
+  Meals: { icon: '🍽️', tint: colors.meal },
+  Exercise: { icon: '🏃', tint: colors.exercise },
+  Mind: { icon: '🧠', tint: colors.mind },
+  Sleep: { icon: '😴', tint: colors.sleep },
 };
 
-function tabIcon(routeName: string) {
-  return ({ focused }: { focused: boolean }) => (
-    <Text style={{ fontSize: 20, opacity: focused ? 1 : 0.5 }}>
-      {ICONS[routeName]}
-    </Text>
+/** Floating, rounded tab bar with an active pill. */
+function FloatingTabBar({ state, navigation }: BottomTabBarProps) {
+  return (
+    <SafeAreaView edges={['bottom']} style={styles.safe} pointerEvents="box-none">
+      <View style={styles.bar}>
+        {state.routes.map((route, index) => {
+          const focused = state.index === index;
+          const meta = META[route.name];
+          const onPress = () => {
+            const event = navigation.emit({
+              type: 'tabPress',
+              target: route.key,
+              canPreventDefault: true,
+            });
+            if (!focused && !event.defaultPrevented) navigation.navigate(route.name);
+          };
+          return (
+            <Pressable key={route.key} onPress={onPress} style={styles.item}>
+              <View
+                style={[
+                  styles.pill,
+                  focused && { backgroundColor: `${meta.tint}1A` },
+                ]}
+              >
+                <Text style={[styles.icon, { opacity: focused ? 1 : 0.55 }]}>{meta.icon}</Text>
+              </View>
+              <Text
+                style={[
+                  styles.label,
+                  { color: focused ? meta.tint : colors.textMuted, fontWeight: focused ? '700' : '500' },
+                ]}
+              >
+                {route.name}
+              </Text>
+            </Pressable>
+          );
+        })}
+      </View>
+    </SafeAreaView>
   );
 }
 
@@ -32,16 +69,8 @@ export function RootNavigator() {
   return (
     <NavigationContainer>
       <Tab.Navigator
-        screenOptions={({ route }) => ({
-          headerShown: false,
-          tabBarActiveTintColor: colors.primary,
-          tabBarInactiveTintColor: colors.textMuted,
-          tabBarStyle: {
-            backgroundColor: colors.surface,
-            borderTopColor: colors.border,
-          },
-          tabBarIcon: tabIcon(route.name),
-        })}
+        screenOptions={{ headerShown: false }}
+        tabBar={(props) => <FloatingTabBar {...props} />}
       >
         <Tab.Screen name="Today" component={DashboardScreen} />
         <Tab.Screen name="Meals" component={MealsScreen} />
@@ -52,3 +81,29 @@ export function RootNavigator() {
     </NavigationContainer>
   );
 }
+
+const styles = StyleSheet.create({
+  safe: { position: 'absolute', left: 0, right: 0, bottom: 0 },
+  bar: {
+    flexDirection: 'row',
+    backgroundColor: colors.surface,
+    marginHorizontal: spacing.lg,
+    marginBottom: spacing.sm,
+    borderRadius: radius.xl,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.sm,
+    borderWidth: 1,
+    borderColor: colors.border,
+    ...shadow.lg,
+  },
+  item: { flex: 1, alignItems: 'center', paddingVertical: 4 },
+  pill: {
+    width: 46,
+    height: 32,
+    borderRadius: radius.pill,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  icon: { fontSize: 20 },
+  label: { fontSize: 11, marginTop: 2 },
+});

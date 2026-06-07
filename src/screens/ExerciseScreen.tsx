@@ -1,10 +1,15 @@
 import React, { useState } from 'react';
-import { StyleSheet, View, Text, TextInput, Pressable } from 'react-native';
+import { StyleSheet, View, Text } from 'react-native';
 import { ScreenContainer } from '@/components/ScreenContainer';
 import { Card } from '@/components/Card';
 import { PrimaryButton } from '@/components/PrimaryButton';
+import { TextField } from '@/components/TextField';
+import { EntryRow } from '@/components/EntryRow';
+import { EmptyState } from '@/components/EmptyState';
+import { SectionHeader } from '@/components/SectionHeader';
+import { IconBadge } from '@/components/IconBadge';
 import { useData } from '@/context/DataContext';
-import { colors } from '@/theme/colors';
+import { colors, gradients, spacing, type } from '@/theme/colors';
 import { activeProviderName } from '@/services/health/healthService';
 import { formatDuration, formatTime, todayISO } from '@/utils/date';
 
@@ -16,7 +21,7 @@ export function ExerciseScreen() {
   const [syncing, setSyncing] = useState(false);
 
   const today = todayISO();
-  const todaysExercises = data.exercises.filter((e) => e.date === today);
+  const todays = data.exercises.filter((e) => e.date === today);
   const canSave = activity.trim().length > 0 && Number(duration) > 0;
 
   const onSave = () => {
@@ -43,55 +48,37 @@ export function ExerciseScreen() {
   };
 
   return (
-    <ScreenContainer
-      title="Exercise"
-      subtitle="Movement & workouts"
-      onRefresh={onSync}
-      refreshing={syncing}
-    >
-      <Card title="Smartwatch sync" accent={colors.exercise}>
-        <Text style={styles.syncText}>
-          Connected provider: <Text style={styles.bold}>{activeProviderName()}</Text>
-        </Text>
-        <Text style={styles.hint}>
-          Pull steps, workouts and heart rate from your watch. (Currently using
-          mock data until the native HealthKit / Health Connect module is added.)
-        </Text>
+    <ScreenContainer title="Exercise" subtitle="Movement" onRefresh={onSync} refreshing={syncing}>
+      <Card padded={false} style={styles.syncCard}>
+        <View style={styles.syncRow}>
+          <IconBadge emoji="⌚" colors={gradients.exercise} size={46} />
+          <View style={{ flex: 1, marginLeft: spacing.md }}>
+            <Text style={styles.syncTitle}>Smartwatch</Text>
+            <Text style={type.caption}>Connected: {activeProviderName()}</Text>
+          </View>
+        </View>
         <PrimaryButton
-          label="Sync now"
+          label={syncing ? 'Syncing…' : 'Sync now'}
           onPress={onSync}
+          variant="soft"
           color={colors.exercise}
-          variant="outline"
           loading={syncing}
-          style={{ marginTop: 14 }}
+          style={{ margin: spacing.lg, marginTop: 0 }}
         />
       </Card>
 
-      <Card title="Log a workout manually" accent={colors.exercise}>
-        <Text style={styles.fieldLabel}>Activity</Text>
-        <TextInput
-          style={styles.input}
-          placeholder="e.g. Running"
-          placeholderTextColor={colors.textMuted}
-          value={activity}
-          onChangeText={setActivity}
-        />
-        <Text style={[styles.fieldLabel, { marginTop: 14 }]}>Duration (min)</Text>
-        <TextInput
-          style={styles.input}
+      <Card title="Log a workout">
+        <TextField label="Activity" placeholder="e.g. Running" value={activity} onChangeText={setActivity} />
+        <TextField
+          label="Duration (min)"
           placeholder="e.g. 30"
-          placeholderTextColor={colors.textMuted}
           keyboardType="number-pad"
           value={duration}
           onChangeText={setDuration}
         />
-        <Text style={[styles.fieldLabel, { marginTop: 14 }]}>
-          Calories burned (optional)
-        </Text>
-        <TextInput
-          style={styles.input}
+        <TextField
+          label="Calories burned (optional)"
           placeholder="e.g. 250"
-          placeholderTextColor={colors.textMuted}
           keyboardType="number-pad"
           value={calories}
           onChangeText={setCalories}
@@ -99,37 +86,35 @@ export function ExerciseScreen() {
         <PrimaryButton
           label="Add workout"
           onPress={onSave}
-          color={colors.exercise}
+          gradient={gradients.primary}
           disabled={!canSave}
-          style={{ marginTop: 16 }}
+          style={{ marginTop: spacing.sm }}
         />
       </Card>
 
-      <Text style={styles.sectionTitle}>Today's activity</Text>
-      {todaysExercises.length === 0 ? (
-        <Text style={styles.empty}>Nothing logged yet today.</Text>
+      <SectionHeader title="Today's activity" />
+      {todays.length === 0 ? (
+        <Card>
+          <EmptyState emoji="🏃" text="Nothing logged yet. Sync your watch or add a workout above." />
+        </Card>
       ) : (
-        todaysExercises.map((ex) => (
-          <Card key={ex.id} accent={colors.exercise}>
-            <View style={styles.row}>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.activity}>{ex.activity}</Text>
-                <Text style={styles.detail}>
-                  {formatDuration(ex.durationMinutes)}
-                  {ex.caloriesBurned ? ` · ${ex.caloriesBurned} kcal` : ''}
-                  {ex.steps ? ` · ${ex.steps.toLocaleString()} steps` : ''}
-                  {ex.avgHeartRate ? ` · ${ex.avgHeartRate} bpm` : ''}
-                </Text>
-                <Text style={styles.meta}>
-                  {ex.source === 'manual' ? 'Manual' : 'From watch'} ·{' '}
-                  {formatTime(ex.loggedAt)}
-                </Text>
-              </View>
-              <Pressable onPress={() => removeEntry('exercises', ex.id)}>
-                <Text style={styles.delete}>Remove</Text>
-              </Pressable>
-            </View>
-          </Card>
+        todays.map((ex) => (
+          <EntryRow
+            key={ex.id}
+            emoji="🏃"
+            gradient={gradients.exercise}
+            title={ex.activity}
+            subtitle={[
+              formatDuration(ex.durationMinutes),
+              ex.steps ? `${ex.steps.toLocaleString()} steps` : null,
+              ex.avgHeartRate ? `${ex.avgHeartRate} bpm` : null,
+            ]
+              .filter(Boolean)
+              .join(' · ')}
+            meta={`${ex.source === 'manual' ? 'Manual' : 'From watch'} · ${formatTime(ex.loggedAt)}`}
+            value={ex.caloriesBurned ? `${ex.caloriesBurned} kcal` : undefined}
+            onRemove={() => removeEntry('exercises', ex.id)}
+          />
         ))
       )}
     </ScreenContainer>
@@ -137,36 +122,7 @@ export function ExerciseScreen() {
 }
 
 const styles = StyleSheet.create({
-  syncText: { fontSize: 15, color: colors.text },
-  bold: { fontWeight: '700' },
-  hint: { fontSize: 13, color: colors.textMuted, marginTop: 6 },
-  fieldLabel: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: colors.textMuted,
-    marginBottom: 8,
-  },
-  input: {
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: 10,
-    paddingHorizontal: 12,
-    paddingVertical: 11,
-    fontSize: 16,
-    color: colors.text,
-    backgroundColor: colors.background,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: colors.text,
-    marginTop: 8,
-    marginBottom: 10,
-  },
-  empty: { color: colors.textMuted, fontStyle: 'italic' },
-  row: { flexDirection: 'row', alignItems: 'flex-start' },
-  activity: { fontSize: 16, fontWeight: '700', color: colors.text },
-  detail: { fontSize: 14, color: colors.text, marginTop: 4 },
-  meta: { fontSize: 12, color: colors.textMuted, marginTop: 4 },
-  delete: { fontSize: 13, fontWeight: '600', color: colors.danger },
+  syncCard: { overflow: 'hidden' },
+  syncRow: { flexDirection: 'row', alignItems: 'center', padding: spacing.lg },
+  syncTitle: { ...type.body, fontWeight: '700' },
 });

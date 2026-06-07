@@ -1,18 +1,25 @@
 import React from 'react';
 import { StyleSheet, View, Text } from 'react-native';
-import { colors } from '@/theme/colors';
+import { colors, radius, shadow, spacing, type } from '@/theme/colors';
+import { IconBadge } from './IconBadge';
 
 interface Props {
+  emoji: string;
   label: string;
   value: string;
-  accent?: string;
+  unit?: string;
+  gradient: readonly [string, string];
 }
 
-/** Compact metric tile for the dashboard summary grid. */
-export function StatTile({ label, value, accent = colors.primary }: Props) {
+/** Compact metric tile: pastel icon badge + thin number + label. */
+export function StatTile({ emoji, label, value, unit, gradient }: Props) {
   return (
     <View style={styles.tile}>
-      <Text style={[styles.value, { color: accent }]}>{value}</Text>
+      <IconBadge emoji={emoji} colors={gradient} size={38} />
+      <View style={styles.valueRow}>
+        <Text style={type.metricSmall}>{value}</Text>
+        {unit ? <Text style={styles.unit}>{unit}</Text> : null}
+      </View>
       <Text style={styles.label}>{label}</Text>
     </View>
   );
@@ -20,14 +27,16 @@ export function StatTile({ label, value, accent = colors.primary }: Props) {
 
 const styles = StyleSheet.create({
   tile: {
-    flex: 1,
-    minWidth: '45%',
+    flexGrow: 1,
+    flexBasis: '47%',
     backgroundColor: colors.surface,
-    borderRadius: 14,
+    borderRadius: radius.lg,
     borderWidth: 1,
     borderColor: colors.border,
-    padding: 16,
+    padding: spacing.lg,
+    ...shadow.sm,
   },
-  value: { fontSize: 24, fontWeight: '800' },
-  label: { fontSize: 13, color: colors.textMuted, marginTop: 4 },
+  valueRow: { flexDirection: 'row', alignItems: 'baseline', marginTop: spacing.md },
+  unit: { ...type.caption, marginLeft: 4, color: colors.textSecondary },
+  label: { ...type.caption, marginTop: 2 },
 });

@@ -1,6 +1,6 @@
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { colors } from '@/theme/colors';
+import { colors, radius, spacing } from '@/theme/colors';
 
 interface Props<T extends string> {
   options: readonly { label: string; value: T }[];
@@ -9,7 +9,7 @@ interface Props<T extends string> {
   accent?: string;
 }
 
-/** Horizontal pill selector for picking one option from a small set. */
+/** Pill selector for picking one option from a small set. */
 export function SegmentedSelector<T extends string>({
   options,
   value,
@@ -28,13 +28,13 @@ export function SegmentedSelector<T extends string>({
               styles.pill,
               selected
                 ? { backgroundColor: accent, borderColor: accent }
-                : { borderColor: colors.border },
+                : { borderColor: colors.border, backgroundColor: colors.backgroundAlt },
             ]}
           >
             <Text
               style={[
                 styles.label,
-                { color: selected ? colors.textInverse : colors.textMuted },
+                { color: selected ? colors.textInverse : colors.textSecondary },
               ]}
             >
               {opt.label}
@@ -47,13 +47,12 @@ export function SegmentedSelector<T extends string>({
 }
 
 const styles = StyleSheet.create({
-  row: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  row: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
   pill: {
-    paddingVertical: 8,
-    paddingHorizontal: 14,
-    borderRadius: 999,
+    paddingVertical: 9,
+    paddingHorizontal: 16,
+    borderRadius: radius.pill,
     borderWidth: 1.5,
-    backgroundColor: colors.surface,
   },
   label: { fontSize: 14, fontWeight: '600' },
 });

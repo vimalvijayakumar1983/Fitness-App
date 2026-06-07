@@ -1,26 +1,26 @@
 import React from 'react';
 import { StyleSheet, View, Text, ViewStyle } from 'react-native';
-import { colors } from '@/theme/colors';
+import { colors, radius, shadow, spacing, type } from '@/theme/colors';
 
 interface Props {
   title?: string;
-  /** Optional left accent color (e.g. per-domain color). */
-  accent?: string;
+  /** Optional small element rendered on the right of the title row. */
+  trailing?: React.ReactNode;
   children: React.ReactNode;
   style?: ViewStyle;
+  padded?: boolean;
 }
 
-/** A simple elevated surface used throughout the app. */
-export function Card({ title, accent, children, style }: Props) {
+/** Elevated white surface — large radius, very soft shadow. */
+export function Card({ title, trailing, children, style, padded = true }: Props) {
   return (
-    <View
-      style={[
-        styles.card,
-        accent ? { borderLeftWidth: 4, borderLeftColor: accent } : null,
-        style,
-      ]}
-    >
-      {title ? <Text style={styles.title}>{title}</Text> : null}
+    <View style={[styles.card, padded && styles.padded, style]}>
+      {title ? (
+        <View style={styles.titleRow}>
+          <Text style={type.sectionTitle}>{title}</Text>
+          {trailing}
+        </View>
+      ) : null}
       {children}
     </View>
   );
@@ -29,16 +29,17 @@ export function Card({ title, accent, children, style }: Props) {
 const styles = StyleSheet.create({
   card: {
     backgroundColor: colors.surface,
-    borderRadius: 14,
-    padding: 16,
-    marginBottom: 12,
+    borderRadius: radius.xl,
+    marginBottom: spacing.md,
     borderWidth: 1,
     borderColor: colors.border,
+    ...shadow.sm,
   },
-  title: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: colors.text,
-    marginBottom: 10,
+  padded: { padding: spacing.xl },
+  titleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: spacing.lg,
   },
 });
