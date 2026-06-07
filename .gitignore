@@ -33,3 +33,6 @@ yarn-error.*
 # IDE
 .idea/
 .vscode/
+
+# Screenshots (generated)
+screenshots/
