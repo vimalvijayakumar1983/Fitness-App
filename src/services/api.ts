@@ -114,6 +114,12 @@ export const api = {
     return result;
   },
   logout: () => setToken(null),
+  me: () => request<{ user: { id: string; email: string; name: string | null; role: string } }>('/auth/me'),
+
+  // Cloud sync (app-owned data blob)
+  getSync: () => request<{ data: unknown | null; updatedAt: string | null }>('/sync'),
+  putSync: (data: unknown) =>
+    request<{ ok: boolean; updatedAt: string }>('/sync', { method: 'PUT', body: { data } }),
 
   // Food database
   searchFoods: (q: string) =>

@@ -2,6 +2,7 @@ import React from 'react';
 import { Platform } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { AuthProvider } from '@/context/AuthContext';
 import { DataProvider } from '@/context/DataContext';
 import { RootNavigator } from '@/navigation/RootNavigator';
 
@@ -16,10 +17,12 @@ if (Platform.OS === 'web' && typeof document !== 'undefined') {
 export default function App() {
   return (
     <SafeAreaProvider>
-      <DataProvider>
-        <StatusBar style="dark" />
-        <RootNavigator />
-      </DataProvider>
+      <AuthProvider>
+        <DataProvider>
+          <StatusBar style="dark" />
+          <RootNavigator />
+        </DataProvider>
+      </AuthProvider>
     </SafeAreaProvider>
   );
 }

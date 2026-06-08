@@ -4,6 +4,7 @@ import React, {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from 'react';
 import {
@@ -20,7 +21,8 @@ import {
 } from '@/models/types';
 import { loadAppData, saveAppData } from '@/services/storage';
 import { getHealthProvider } from '@/services/health/healthService';
-import { fetchCmsContent, CmsContent } from '@/services/api';
+import { api, fetchCmsContent, CmsContent } from '@/services/api';
+import { useAuth } from '@/context/AuthContext';
 import { makeId, todayISO } from '@/utils/date';
 
 interface DataContextValue {
@@ -28,6 +30,8 @@ interface DataContextValue {
   loading: boolean;
   /** Admin-managed content fetched from the backend (merged over bundled data). */
   cms: CmsContent;
+  /** True while a cloud sync push/pull is in flight (signed-in users). */
+  syncing: boolean;
 
   addMeal: (meal: Omit<MealEntry, 'id' | 'loggedAt'>) => void;
   addExercise: (exercise: Omit<ExerciseEntry, 'id' | 'loggedAt'>) => void;
@@ -57,14 +61,62 @@ interface DataContextValue {
 const DataContext = createContext<DataContextValue | undefined>(undefined);
 
 export function DataProvider({ children }: { children: React.ReactNode }) {
+  const { token } = useAuth();
   const [data, setData] = useState<AppData>(emptyAppData);
   const [loading, setLoading] = useState(true);
   const [cms, setCms] = useState<CmsContent>({ foods: [], exercises: [], recipes: [] });
+  const [syncing, setSyncing] = useState(false);
+  const skipPush = useRef(false);
+  const pushTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Pull admin-managed content from the backend (best-effort; offline-safe).
   useEffect(() => {
     fetchCmsContent().then(setCms).catch(() => {});
   }, []);
+
+  // On sign-in: pull the cloud copy of app-owned data (or seed it from local).
+  useEffect(() => {
+    if (!token || loading) return;
+    let cancelled = false;
+    setSyncing(true);
+    api
+      .getSync()
+      .then(async (res) => {
+        if (cancelled) return;
+        if (res.data) {
+          skipPush.current = true;
+          setData({ ...emptyAppData, ...(res.data as AppData) });
+        } else {
+          await api.putSync(data); // first device — seed server with local data
+        }
+      })
+      .catch(() => {})
+      .finally(() => {
+        if (!cancelled) setSyncing(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+    // Only re-run when auth changes, not on every data edit.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [token, loading]);
+
+  // Push local changes to the cloud (debounced) while signed in.
+  useEffect(() => {
+    if (!token || loading) return;
+    if (skipPush.current) {
+      skipPush.current = false;
+      return;
+    }
+    if (pushTimer.current) clearTimeout(pushTimer.current);
+    pushTimer.current = setTimeout(() => {
+      setSyncing(true);
+      api.putSync(data).catch(() => {}).finally(() => setSyncing(false));
+    }, 900);
+    return () => {
+      if (pushTimer.current) clearTimeout(pushTimer.current);
+    };
+  }, [data, token, loading]);
 
   // Load persisted data once on mount.
   useEffect(() => {
@@ -238,6 +290,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       data,
       loading,
       cms,
+      syncing,
       addMeal,
       addExercise,
       addMood,
@@ -257,6 +310,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       data,
       loading,
       cms,
+      syncing,
       addMeal,
       addExercise,
       addMood,

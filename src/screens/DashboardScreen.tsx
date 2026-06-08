@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { StyleSheet, View, Text } from 'react-native';
+import { Pressable, StyleSheet, View, Text } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { ScreenContainer } from '@/components/ScreenContainer';
 import { Card } from '@/components/Card';
@@ -10,7 +10,9 @@ import { ReadinessGauge } from '@/components/ReadinessGauge';
 import { BarChart } from '@/components/BarChart';
 import { MacroSummary } from '@/components/MacroSummary';
 import { EntryRow } from '@/components/EntryRow';
+import { AccountModal } from '@/components/AccountModal';
 import { useData } from '@/context/DataContext';
+import { useAuth } from '@/context/AuthContext';
 import { colors, gradients, hexA, glow, radius, shadow, spacing, type } from '@/theme/colors';
 import { summarizeDay, summarizeMacros, waterMl, computeReadiness, computeStreak } from '@/utils/selectors';
 import { formatDuration, todayISO, toISODate } from '@/utils/date';
@@ -53,7 +55,9 @@ function dayLabels(n: number): string[] {
 
 export function DashboardScreen() {
   const { data, syncHealthData } = useData();
+  const { user } = useAuth();
   const [refreshing, setRefreshing] = useState(false);
+  const [accountOpen, setAccountOpen] = useState(false);
   const today = todayISO();
   const s = summarizeDay(data, today);
   const macros = summarizeMacros(data, today);
@@ -127,9 +131,9 @@ export function DashboardScreen() {
       onRefresh={onRefresh}
       refreshing={refreshing}
       right={
-        <View style={styles.avatar}>
-          <Text style={styles.avatarText}>V</Text>
-        </View>
+        <Pressable style={styles.avatar} onPress={() => setAccountOpen(true)}>
+          <Text style={styles.avatarText}>{(user?.name || user?.email || 'V')[0].toUpperCase()}</Text>
+        </Pressable>
       }
     >
       {/* Streak chip */}
@@ -264,6 +268,8 @@ export function DashboardScreen() {
           />
         ))
       )}
+
+      <AccountModal visible={accountOpen} onClose={() => setAccountOpen(false)} />
     </ScreenContainer>
   );
 }

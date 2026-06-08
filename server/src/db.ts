@@ -171,6 +171,13 @@ export function initSchema(): void {
       color TEXT,
       created_at TEXT NOT NULL
     );
+
+    -- Per-user app state blob for cloud sync (app-owned data).
+    CREATE TABLE IF NOT EXISTS user_state (
+      user_id TEXT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+      data TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    );
   `);
 }
 
