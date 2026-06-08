@@ -3,6 +3,9 @@
   "version": "0.1.0",
   "description": "Backend API for the Fitness App (meals, exercise, mood, sleep, goals, AI coach)",
   "main": "dist/index.js",
+  "engines": {
+    "node": "20.x"
+  },
   "scripts": {
     "build": "tsc",
     "start": "node dist/index.js",

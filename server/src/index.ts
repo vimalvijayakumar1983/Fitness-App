@@ -14,7 +14,11 @@ import { contentRouter } from './routes/content';
 const app = express();
 // Photos for food analysis can be a few hundred KB of base64.
 app.use(express.json({ limit: '12mb' }));
-app.use(cors());
+
+// CORS: open by default; in production set CORS_ORIGINS to a comma-separated
+// allowlist of your admin + app URLs.
+const corsOrigins = process.env.CORS_ORIGINS?.split(',').map((s) => s.trim()).filter(Boolean);
+app.use(cors(corsOrigins && corsOrigins.length ? { origin: corsOrigins } : undefined));
 
 // Health check.
 app.get('/api/health', (_req, res) => {
