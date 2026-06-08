@@ -25,7 +25,7 @@ const MEAL_TYPES: { label: string; value: MealType }[] = [
 ];
 
 export function MealsScreen() {
-  const { data, addMeal, addWater, removeEntry, toggleFavoriteFood } = useData();
+  const { data, addMeal, addWater, removeEntry, toggleFavoriteFood, upsertCustomFood, deleteCustomFood } = useData();
   const [type_, setType] = useState<MealType>('breakfast');
   const [name, setName] = useState('');
   const [calories, setCalories] = useState('');
@@ -130,7 +130,10 @@ export function MealsScreen() {
         visible={searchOpen}
         mealType={type_}
         favoriteIds={data.favoriteFoodIds}
+        customFoods={data.customFoods}
         onToggleFavorite={toggleFavoriteFood}
+        onUpsertFood={upsertCustomFood}
+        onDeleteFood={deleteCustomFood}
         onClose={() => setSearchOpen(false)}
         onAdd={onAddFromSearch}
       />

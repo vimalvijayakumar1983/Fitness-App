@@ -112,6 +112,13 @@ export interface Profile {
   /** Daily water goal in millilitres. */
   waterGoalMl: number;
   units: 'metric' | 'imperial';
+  /** Body stats used for BMR/TDEE and exercise calorie estimates. */
+  weightKg: number;
+  heightCm: number;
+  age: number;
+  sex: 'male' | 'female' | 'other';
+  /** Activity multiplier for TDEE (1.2 sedentary .. 1.725 very active). */
+  activityLevel: number;
 }
 
 /**
@@ -132,6 +139,39 @@ export interface Food {
   category: 'protein' | 'carb' | 'veg' | 'fruit' | 'dairy' | 'fat' | 'drink' | 'snack' | 'meal';
 }
 
+/** Movement categories for the exercise catalog. */
+export type ExerciseCategory =
+  | 'strength'
+  | 'bodyweight'
+  | 'cardio'
+  | 'sports'
+  | 'flexibility';
+
+export type MuscleGroup =
+  | 'chest'
+  | 'back'
+  | 'shoulders'
+  | 'arms'
+  | 'legs'
+  | 'glutes'
+  | 'core'
+  | 'full_body'
+  | 'cardio';
+
+/**
+ * A movement in the searchable exercise catalog. `met` is the metabolic
+ * equivalent used to estimate calories: kcal/min = met * 3.5 * kg / 200.
+ */
+export interface ExerciseDef {
+  id: string;
+  name: string;
+  category: ExerciseCategory;
+  muscle: MuscleGroup;
+  /** Primary equipment, e.g. "Barbell", "Dumbbell", "Bodyweight", "Machine". */
+  equipment?: string;
+  met: number;
+}
+
 export interface AppData {
   meals: MealEntry[];
   exercises: ExerciseEntry[];
@@ -141,6 +181,10 @@ export interface AppData {
   profile: Profile;
   /** Food ids the user has favorited for quick add. */
   favoriteFoodIds: string[];
+  /** User-created or user-edited foods; these override bundled foods by id. */
+  customFoods: Food[];
+  /** User-created or user-edited exercises; override bundled by id. */
+  customExercises: ExerciseDef[];
 }
 
 export const DEFAULT_PROFILE: Profile = {
@@ -151,6 +195,11 @@ export const DEFAULT_PROFILE: Profile = {
   macroTargets: { protein: 140, carbs: 220, fat: 70 },
   waterGoalMl: 2500,
   units: 'metric',
+  weightKg: 70,
+  heightCm: 170,
+  age: 30,
+  sex: 'male',
+  activityLevel: 1.45,
 };
 
 export const emptyAppData: AppData = {
@@ -161,4 +210,6 @@ export const emptyAppData: AppData = {
   water: [],
   profile: DEFAULT_PROFILE,
   favoriteFoodIds: [],
+  customFoods: [],
+  customExercises: [],
 };

@@ -123,6 +123,15 @@ async function typeInto(page, placeholder, value) {
   await sleep(1200);
   await shot('3-exercise-synced.png');
 
+  // 3b. Exercise library
+  await clickByText(page, '🏋️ Browse exercise library');
+  await sleep(800);
+  await typeInto(page, 'Search e.g. squat, bench, running', '');
+  await sleep(300);
+  await shot('8-exercise-library.png');
+  await clickByText(page, '✕');
+  await sleep(500);
+
   // 4. Mind (mood)
   await clickByText(page, 'Mind');
   await sleep(600);

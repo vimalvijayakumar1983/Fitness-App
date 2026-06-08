@@ -9,7 +9,9 @@ import React, {
 import {
   AppData,
   emptyAppData,
+  ExerciseDef,
   ExerciseEntry,
+  Food,
   MealEntry,
   MoodEntry,
   Profile,
@@ -31,6 +33,12 @@ interface DataContextValue {
 
   updateProfile: (patch: Partial<Profile>) => void;
   toggleFavoriteFood: (foodId: string) => void;
+
+  /** Create or edit a food (stored as a custom food; overrides bundled by id). */
+  upsertCustomFood: (food: Food) => void;
+  deleteCustomFood: (foodId: string) => void;
+  upsertCustomExercise: (exercise: ExerciseDef) => void;
+  deleteCustomExercise: (exerciseId: string) => void;
 
   removeEntry: (
     kind: 'meals' | 'exercises' | 'moods' | 'sleep' | 'water',
@@ -132,6 +140,45 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     }));
   }, []);
 
+  const upsertCustomFood = useCallback((food: Food) => {
+    setData((prev) => {
+      const exists = prev.customFoods.some((f) => f.id === food.id);
+      return {
+        ...prev,
+        customFoods: exists
+          ? prev.customFoods.map((f) => (f.id === food.id ? food : f))
+          : [food, ...prev.customFoods],
+      };
+    });
+  }, []);
+
+  const deleteCustomFood = useCallback((foodId: string) => {
+    setData((prev) => ({
+      ...prev,
+      customFoods: prev.customFoods.filter((f) => f.id !== foodId),
+      favoriteFoodIds: prev.favoriteFoodIds.filter((id) => id !== foodId),
+    }));
+  }, []);
+
+  const upsertCustomExercise = useCallback((exercise: ExerciseDef) => {
+    setData((prev) => {
+      const exists = prev.customExercises.some((e) => e.id === exercise.id);
+      return {
+        ...prev,
+        customExercises: exists
+          ? prev.customExercises.map((e) => (e.id === exercise.id ? exercise : e))
+          : [exercise, ...prev.customExercises],
+      };
+    });
+  }, []);
+
+  const deleteCustomExercise = useCallback((exerciseId: string) => {
+    setData((prev) => ({
+      ...prev,
+      customExercises: prev.customExercises.filter((e) => e.id !== exerciseId),
+    }));
+  }, []);
+
   const removeEntry = useCallback(
     (kind: 'meals' | 'exercises' | 'moods' | 'sleep' | 'water', id: string) => {
       setData((prev) => ({
@@ -182,6 +229,10 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       addWater,
       updateProfile,
       toggleFavoriteFood,
+      upsertCustomFood,
+      deleteCustomFood,
+      upsertCustomExercise,
+      deleteCustomExercise,
       removeEntry,
       syncHealthData,
     }),
@@ -195,6 +246,10 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       addWater,
       updateProfile,
       toggleFavoriteFood,
+      upsertCustomFood,
+      deleteCustomFood,
+      upsertCustomExercise,
+      deleteCustomExercise,
       removeEntry,
       syncHealthData,
     ],

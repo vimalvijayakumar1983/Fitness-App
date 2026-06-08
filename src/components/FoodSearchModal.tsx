@@ -3,39 +3,56 @@ import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-nati
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { TextField } from './TextField';
+import { FoodEditorModal } from './FoodEditorModal';
 import { colors, gradients, radius, spacing, type } from '@/theme/colors';
-import { FOODS_BY_ID, searchFoods } from '@/data/foods';
+import { foodsById, mergeFoods, searchFoods } from '@/data/foods';
 import type { Food, FoodItem, MealType } from '@/models/types';
 
 interface Props {
   visible: boolean;
   mealType: MealType;
   favoriteIds: string[];
+  customFoods: Food[];
   onToggleFavorite: (foodId: string) => void;
+  onUpsertFood: (food: Food) => void;
+  onDeleteFood: (foodId: string) => void;
   onClose: () => void;
   onAdd: (items: FoodItem[]) => void;
 }
 
 const cap = (s: string) => s[0].toUpperCase() + s.slice(1);
 
-/** Search the food database, pick servings, and add items to a meal. */
-export function FoodSearchModal({ visible, mealType, favoriteIds, onToggleFavorite, onClose, onAdd }: Props) {
+/** Search the food database, edit/create foods, pick servings, add to a meal. */
+export function FoodSearchModal({
+  visible,
+  mealType,
+  favoriteIds,
+  customFoods,
+  onToggleFavorite,
+  onUpsertFood,
+  onDeleteFood,
+  onClose,
+  onAdd,
+}: Props) {
   const [query, setQuery] = useState('');
   const [selected, setSelected] = useState<Record<string, number>>({});
+  const [editorOpen, setEditorOpen] = useState(false);
+  const [editing, setEditing] = useState<Food | null>(null);
+
+  const foods = useMemo(() => mergeFoods(customFoods), [customFoods]);
+  const byId = useMemo(() => foodsById(foods), [foods]);
 
   const results = useMemo(() => {
-    if (query.trim()) return searchFoods(query);
-    // No query: favorites first, then the rest.
-    const favs = favoriteIds.map((id) => FOODS_BY_ID[id]).filter(Boolean) as Food[];
+    if (query.trim()) return searchFoods(query, foods);
+    const favs = favoriteIds.map((id) => byId[id]).filter(Boolean) as Food[];
     const favSet = new Set(favoriteIds);
-    return [...favs, ...searchFoods('').filter((f) => !favSet.has(f.id))];
-  }, [query, favoriteIds]);
+    return [...favs, ...foods.filter((f) => !favSet.has(f.id))];
+  }, [query, foods, byId, favoriteIds]);
 
   const selectedFoods = Object.entries(selected).filter(([, q]) => q > 0);
-  const totalKcal = selectedFoods.reduce((sum, [id, q]) => sum + (FOODS_BY_ID[id]?.calories ?? 0) * q, 0);
+  const totalKcal = selectedFoods.reduce((sum, [id, q]) => sum + (byId[id]?.calories ?? 0) * q, 0);
 
-  const setQty = (id: string, qty: number) =>
-    setSelected((prev) => ({ ...prev, [id]: Math.max(0, qty) }));
+  const setQty = (id: string, qty: number) => setSelected((prev) => ({ ...prev, [id]: Math.max(0, qty) }));
 
   const reset = () => {
     setQuery('');
@@ -44,7 +61,7 @@ export function FoodSearchModal({ visible, mealType, favoriteIds, onToggleFavori
 
   const commit = () => {
     const items: FoodItem[] = selectedFoods.map(([id, q]) => {
-      const f = FOODS_BY_ID[id];
+      const f = byId[id];
       return {
         name: q > 1 ? `${f.name} ×${q}` : f.name,
         calories: Math.round(f.calories * q),
@@ -63,8 +80,13 @@ export function FoodSearchModal({ visible, mealType, favoriteIds, onToggleFavori
     onClose();
   };
 
+  const openEditor = (food: Food | null) => {
+    setEditing(food);
+    setEditorOpen(true);
+  };
+
   return (
-    <Modal visible={visible} animationType="slide" transparent={false} onRequestClose={close}>
+    <Modal visible={visible} animationType="slide" onRequestClose={close}>
       <View style={styles.root}>
         <SafeAreaView style={styles.safe} edges={['top']}>
           <View style={styles.header}>
@@ -78,7 +100,7 @@ export function FoodSearchModal({ visible, mealType, favoriteIds, onToggleFavori
           </View>
 
           <TextField
-            placeholder="Search e.g. chicken, oats, banana"
+            placeholder="Search e.g. chicken, biryani, paneer"
             value={query}
             onChangeText={setQuery}
             autoFocus
@@ -86,9 +108,11 @@ export function FoodSearchModal({ visible, mealType, favoriteIds, onToggleFavori
           />
 
           <ScrollView contentContainerStyle={styles.list} keyboardShouldPersistTaps="handled">
-            {!query.trim() && favoriteIds.length > 0 ? (
-              <Text style={styles.sectionLabel}>Favorites & common</Text>
-            ) : null}
+            <Pressable style={styles.createRow} onPress={() => openEditor(null)}>
+              <Text style={styles.createPlus}>＋</Text>
+              <Text style={styles.createText}>Create a custom food</Text>
+            </Pressable>
+
             {results.map((f) => {
               const qty = selected[f.id] ?? 0;
               const fav = favoriteIds.includes(f.id);
@@ -97,11 +121,14 @@ export function FoodSearchModal({ visible, mealType, favoriteIds, onToggleFavori
                   <Pressable style={styles.star} onPress={() => onToggleFavorite(f.id)} hitSlop={8}>
                     <Text style={{ fontSize: 16, opacity: fav ? 1 : 0.3 }}>{fav ? '⭐' : '☆'}</Text>
                   </Pressable>
-                  <Pressable style={styles.rowMain} onPress={() => setQty(f.id, qty + 1)}>
+                  <Pressable style={styles.rowMain} onPress={() => setQty(f.id, qty + 1)} onLongPress={() => openEditor(f)}>
                     <Text style={styles.foodName}>{f.name}</Text>
                     <Text style={styles.foodMeta}>
                       {f.serving} · {f.calories} kcal · P{f.protein} C{f.carbs} F{f.fat}
                     </Text>
+                  </Pressable>
+                  <Pressable style={styles.editBtn} onPress={() => openEditor(f)} hitSlop={6}>
+                    <Text style={styles.editIcon}>✎</Text>
                   </Pressable>
                   {qty > 0 ? (
                     <View style={styles.stepper}>
@@ -121,9 +148,7 @@ export function FoodSearchModal({ visible, mealType, favoriteIds, onToggleFavori
                 </View>
               );
             })}
-            {results.length === 0 ? (
-              <Text style={styles.empty}>No foods match "{query}".</Text>
-            ) : null}
+            {results.length === 0 ? <Text style={styles.empty}>No foods match "{query}". Create it above.</Text> : null}
           </ScrollView>
 
           {selectedFoods.length > 0 ? (
@@ -143,6 +168,14 @@ export function FoodSearchModal({ visible, mealType, favoriteIds, onToggleFavori
             </SafeAreaView>
           ) : null}
         </SafeAreaView>
+
+        <FoodEditorModal
+          visible={editorOpen}
+          initial={editing}
+          onClose={() => setEditorOpen(false)}
+          onSave={onUpsertFood}
+          onDelete={onDeleteFood}
+        />
       </View>
     </Modal>
   );
@@ -151,26 +184,27 @@ export function FoodSearchModal({ visible, mealType, favoriteIds, onToggleFavori
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.background },
   safe: { flex: 1 },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-    paddingHorizontal: spacing.lg,
-    paddingTop: spacing.sm,
-    paddingBottom: spacing.lg,
-  },
+  header: { flexDirection: 'row', alignItems: 'flex-end', paddingHorizontal: spacing.lg, paddingTop: spacing.sm, paddingBottom: spacing.lg },
   eyebrow: { ...type.label, color: colors.meal, marginBottom: 4 },
-  closeBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: colors.surfaceMuted,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
+  closeBtn: { width: 36, height: 36, borderRadius: 18, backgroundColor: colors.surfaceMuted, alignItems: 'center', justifyContent: 'center' },
   closeText: { color: colors.textSecondary, fontSize: 16, fontWeight: '700' },
 
   list: { padding: spacing.lg, paddingTop: spacing.sm, gap: spacing.sm },
-  sectionLabel: { ...type.label, color: colors.textMuted, marginBottom: spacing.xs },
+  createRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.md,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.meal,
+    borderStyle: 'dashed',
+    marginBottom: spacing.xs,
+  },
+  createPlus: { color: colors.meal, fontSize: 18, fontWeight: '700' },
+  createText: { ...type.body, color: colors.meal, fontWeight: '700' },
+
   row: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -186,35 +220,17 @@ const styles = StyleSheet.create({
   rowMain: { flex: 1 },
   foodName: { ...type.body, fontWeight: '600' },
   foodMeta: { ...type.caption, marginTop: 2 },
-  addBtn: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: colors.surfaceMuted,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
+  editBtn: { paddingHorizontal: spacing.sm },
+  editIcon: { color: colors.textMuted, fontSize: 15 },
+  addBtn: { width: 32, height: 32, borderRadius: 16, backgroundColor: colors.surfaceMuted, alignItems: 'center', justifyContent: 'center' },
   addPlus: { color: colors.meal, fontSize: 18, fontWeight: '700' },
   stepper: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-  stepBtn: {
-    width: 30,
-    height: 30,
-    borderRadius: 15,
-    backgroundColor: colors.surfaceMuted,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
+  stepBtn: { width: 30, height: 30, borderRadius: 15, backgroundColor: colors.surfaceMuted, alignItems: 'center', justifyContent: 'center' },
   stepText: { color: colors.text, fontSize: 18, fontWeight: '700' },
   qty: { ...type.body, fontWeight: '700', minWidth: 18, textAlign: 'center' },
   empty: { ...type.caption, textAlign: 'center', marginTop: spacing.xl },
 
-  footer: {
-    paddingHorizontal: spacing.lg,
-    paddingTop: spacing.md,
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
-    backgroundColor: colors.background,
-  },
+  footer: { paddingHorizontal: spacing.lg, paddingTop: spacing.md, borderTopWidth: 1, borderTopColor: colors.border, backgroundColor: colors.background },
   commitBtn: { borderRadius: radius.lg, paddingVertical: 16, alignItems: 'center' },
   commitText: { color: colors.textInverse, fontSize: 16, fontWeight: '700' },
 });
