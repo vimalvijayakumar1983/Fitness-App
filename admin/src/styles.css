@@ -58,3 +58,14 @@ tr:last-child td { border-bottom: none; }
 .form-grid label { display: flex; flex-direction: column; gap: 5px; font-size: 12px; font-weight: 600; color: var(--muted); }
 .form-grid label.full { grid-column: 1 / -1; }
 .modal-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 18px; }
+
+/* CRM / Plans additions */
+.nav-sep { font-size: 10px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); padding: 12px 8px 4px; }
+.badge { background: rgba(35,164,85,.12); color: var(--primary-dark); border-radius: 999px; padding: 3px 10px; font-size: 12px; font-weight: 700; }
+.modal.wide { width: 760px; }
+.meals-table { width: 100%; border-collapse: collapse; }
+.meals-table th { font-size: 11px; color: var(--muted); text-transform: uppercase; text-align: left; padding: 4px 6px; }
+.meals-table td { padding: 4px 6px; border-bottom: 1px solid var(--border); }
+.meals-table input, .meals-table select { padding: 7px 8px; font-size: 13px; }
+.meals-table input.mini { width: 64px; }
+h4 { font-size: 14px; color: var(--muted); font-weight: 700; }

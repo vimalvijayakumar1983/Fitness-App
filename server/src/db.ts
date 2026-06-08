@@ -178,6 +178,26 @@ export function initSchema(): void {
       data TEXT NOT NULL,
       updated_at TEXT NOT NULL
     );
+
+    -- Reusable meal-plan templates built by staff.
+    CREATE TABLE IF NOT EXISTS plan_templates (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      description TEXT,
+      segment_id TEXT,
+      meals TEXT NOT NULL,        -- JSON array of plan meals
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    );
+
+    -- A plan assigned to a specific customer (admin-owned; delivered read-only).
+    CREATE TABLE IF NOT EXISTS customer_plans (
+      user_id TEXT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+      name TEXT NOT NULL,
+      meals TEXT NOT NULL,        -- JSON array of plan meals
+      template_id TEXT,
+      assigned_at TEXT NOT NULL
+    );
   `);
 }
 
@@ -194,4 +214,5 @@ export function migrate(): void {
     }
   };
   add(`ALTER TABLE users ADD COLUMN role TEXT NOT NULL DEFAULT 'customer'`);
+  add(`ALTER TABLE users ADD COLUMN segment_id TEXT`);
 }

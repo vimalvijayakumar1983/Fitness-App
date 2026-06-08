@@ -40,6 +40,20 @@ export const api = {
   update: <T>(resource: string, id: string, body: unknown) =>
     req<T>('PUT', `/api/content/${resource}/${id}`, body),
   remove: (resource: string, id: string) => req('DELETE', `/api/content/${resource}/${id}`),
+
+  // ── CRM: customers ──
+  listCustomers: <T>() => req<T[]>('GET', '/api/admin/customers'),
+  setSegment: (id: string, segmentId: string | null) =>
+    req('PATCH', `/api/admin/customers/${id}`, { segmentId }),
+  getCustomerPlan: <T>(id: string) => req<T>('GET', `/api/admin/customers/${id}/plan`),
+  assignPlan: (id: string, body: unknown) => req('POST', `/api/admin/customers/${id}/plan`, body),
+  removePlan: (id: string) => req('DELETE', `/api/admin/customers/${id}/plan`),
+
+  // ── Plan templates ──
+  listTemplates: <T>() => req<T[]>('GET', '/api/admin/plan-templates'),
+  createTemplate: <T>(body: unknown) => req<T>('POST', '/api/admin/plan-templates', body),
+  updateTemplate: <T>(id: string, body: unknown) => req<T>('PUT', `/api/admin/plan-templates/${id}`, body),
+  deleteTemplate: (id: string) => req('DELETE', `/api/admin/plan-templates/${id}`),
 };
 
 export { API_URL };

@@ -21,7 +21,7 @@ import {
 } from '@/models/types';
 import { loadAppData, saveAppData } from '@/services/storage';
 import { getHealthProvider } from '@/services/health/healthService';
-import { api, fetchCmsContent, CmsContent } from '@/services/api';
+import { api, fetchCmsContent, CmsContent, AssignedPlan } from '@/services/api';
 import { useAuth } from '@/context/AuthContext';
 import { makeId, todayISO } from '@/utils/date';
 
@@ -32,6 +32,8 @@ interface DataContextValue {
   cms: CmsContent;
   /** True while a cloud sync push/pull is in flight (signed-in users). */
   syncing: boolean;
+  /** A plan the coach assigned to this customer from the back office, if any. */
+  assignedPlan: AssignedPlan | null;
 
   addMeal: (meal: Omit<MealEntry, 'id' | 'loggedAt'>) => void;
   addExercise: (exercise: Omit<ExerciseEntry, 'id' | 'loggedAt'>) => void;
@@ -66,6 +68,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [cms, setCms] = useState<CmsContent>({ foods: [], exercises: [], recipes: [] });
   const [syncing, setSyncing] = useState(false);
+  const [assignedPlan, setAssignedPlan] = useState<AssignedPlan | null>(null);
   const skipPush = useRef(false);
   const pushTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -73,6 +76,15 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     fetchCmsContent().then(setCms).catch(() => {});
   }, []);
+
+  // Pull the coach-assigned plan when signed in.
+  useEffect(() => {
+    if (!token) {
+      setAssignedPlan(null);
+      return;
+    }
+    api.getMyPlan().then((r) => setAssignedPlan(r.plan)).catch(() => {});
+  }, [token]);
 
   // On sign-in: pull the cloud copy of app-owned data (or seed it from local).
   useEffect(() => {
@@ -291,6 +303,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       loading,
       cms,
       syncing,
+      assignedPlan,
       addMeal,
       addExercise,
       addMood,
@@ -311,6 +324,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       loading,
       cms,
       syncing,
+      assignedPlan,
       addMeal,
       addExercise,
       addMood,

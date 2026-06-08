@@ -66,6 +66,21 @@ export interface CmsContent {
   recipes: Recipe[];
 }
 
+export interface AssignedMeal {
+  slot: 'breakfast' | 'lunch' | 'dinner' | 'snack';
+  title: string;
+  calories: number;
+  protein: number;
+  carbs: number;
+  fat: number;
+  recipeId?: string;
+}
+export interface AssignedPlan {
+  name: string;
+  meals: AssignedMeal[];
+  assignedAt?: string;
+}
+
 /** Best-effort fetch of admin content; returns empty sets on any failure. */
 export async function fetchCmsContent(): Promise<CmsContent> {
   const empty: CmsContent = { foods: [], exercises: [], recipes: [] };
@@ -120,6 +135,9 @@ export const api = {
   getSync: () => request<{ data: unknown | null; updatedAt: string | null }>('/sync'),
   putSync: (data: unknown) =>
     request<{ ok: boolean; updatedAt: string }>('/sync', { method: 'PUT', body: { data } }),
+
+  // Coach-assigned plan (read-only for the customer)
+  getMyPlan: () => request<{ plan: AssignedPlan | null }>('/me/plan'),
 
   // Food database
   searchFoods: (q: string) =>

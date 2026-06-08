@@ -1,5 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { api, auth, Me } from './api';
+import { CustomersView } from './Customers';
+import { PlansView } from './Plans';
 
 type FieldType = 'text' | 'number' | 'select' | 'tags' | 'lines' | 'ingredients';
 interface Field {
@@ -275,13 +277,17 @@ export function App() {
   if (checking) return <div className="login-wrap"><p className="muted">Loading…</p></div>;
   if (!me) return <Login onDone={setMe} />;
 
-  const resource = RESOURCES.find((r) => r.key === tab)!;
+  const resource = RESOURCES.find((r) => r.key === tab);
 
   return (
     <div className="shell">
       <aside className="sidebar">
         <div className="brand">🥗 Admin</div>
         <nav>
+          <div className="nav-sep">CRM</div>
+          <button className={tab === 'customers' ? 'active' : ''} onClick={() => setTab('customers')}>Customers</button>
+          <button className={tab === 'plans' ? 'active' : ''} onClick={() => setTab('plans')}>Plans</button>
+          <div className="nav-sep">Content</div>
           {RESOURCES.map((r) => (
             <button key={r.key} className={tab === r.key ? 'active' : ''} onClick={() => setTab(r.key)}>{r.label}</button>
           ))}
@@ -291,7 +297,12 @@ export function App() {
           <button className="link" onClick={() => { auth.token = null; setMe(null); }}>Sign out</button>
         </div>
       </aside>
-      <main className="content"><ResourceView resource={resource} /></main>
+      <main className="content">
+        {tab === 'customers' ? <CustomersView />
+          : tab === 'plans' ? <PlansView />
+          : resource ? <ResourceView resource={resource} />
+          : null}
+      </main>
     </div>
   );
 }

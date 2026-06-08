@@ -27,7 +27,7 @@ const GOAL_CARDS: { goal: GoalType; emoji: string; blurb: string }[] = [
 ];
 
 export function PlanScreen() {
-  const { data, cms, addMeal, updateProfile, setPlan } = useData();
+  const { data, cms, assignedPlan, addMeal, updateProfile, setPlan } = useData();
   const [setupOpen, setSetupOpen] = useState(false);
   const [libraryOpen, setLibraryOpen] = useState(false);
   const [detail, setDetail] = useState<Recipe | null>(null);
@@ -88,6 +88,28 @@ export function PlanScreen() {
           );
         })}
       </View>
+
+      {/* Coach-assigned plan (from the back office) */}
+      {assignedPlan ? (
+        <Card title="🎯 Your coach's plan" trailing={<Text style={styles.coachBadge}>Assigned</Text>}>
+          <Text style={styles.coachName}>{assignedPlan.name}</Text>
+          {assignedPlan.meals.map((m, i) => (
+            <View key={i} style={styles.planRow}>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.slotLabel}>{m.slot}</Text>
+                <Text style={styles.planName}>{m.title}</Text>
+                <Text style={styles.planMeta}>{m.calories} kcal · P{m.protein} C{m.carbs} F{m.fat}</Text>
+              </View>
+              <Pressable
+                style={styles.logBtn}
+                onPress={() => addMeal({ date: today, type: m.slot, items: [{ name: m.title, calories: m.calories, protein: m.protein, carbs: m.carbs, fat: m.fat }] })}
+              >
+                <Text style={styles.logText}>Log</Text>
+              </Pressable>
+            </View>
+          ))}
+        </Card>
+      ) : null}
 
       {/* Targets */}
       <Card
@@ -202,6 +224,8 @@ const styles = StyleSheet.create({
   goalLabelActive: { color: colors.primaryDark },
   goalBlurb: { ...type.caption, fontSize: 11, marginTop: 1 },
 
+  coachBadge: { ...type.label, color: colors.primary },
+  coachName: { ...type.body, fontWeight: '700', marginBottom: spacing.sm },
   edit: { ...type.caption, color: colors.primary, fontWeight: '700' },
   unit: { ...type.body, color: colors.textSecondary },
   sub: { ...type.caption, marginTop: 4 },
