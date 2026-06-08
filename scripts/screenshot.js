@@ -81,6 +81,7 @@ async function typeInto(page, placeholder, value) {
     args: ['--no-sandbox', '--disable-setuid-sandbox'],
   });
   const page = await browser.newPage();
+  page.on('pageerror', (e) => console.log('PAGEERROR:', e.message));
   await page.setViewport({ width: 400, height: 860, deviceScaleFactor: 2 });
   await page.goto(`http://localhost:${PORT}`, { waitUntil: 'networkidle0' });
   await sleep(2500);
@@ -93,6 +94,15 @@ async function typeInto(page, placeholder, value) {
 
   // 1. Dashboard (empty)
   await shot('1-dashboard-empty.png');
+
+  // 9. Plan — pick a goal (also generates a plan), capture the planner
+  await clickByText(page, 'Plan');
+  await sleep(900);
+  await clickByText(page, 'Build muscle');
+  await sleep(1000);
+  await shot('9-plan.png');
+  await clickByText(page, 'Today');
+  await sleep(500);
 
   // 2. Meals — log a meal + water
   await clickByText(page, 'Meals');
@@ -148,13 +158,6 @@ async function typeInto(page, placeholder, value) {
   await clickByText(page, 'Today');
   await sleep(800);
   await shot('6-dashboard-filled.png');
-
-  // 9. Plan — generate a meal plan
-  await clickByText(page, 'Plan');
-  await sleep(600);
-  await clickByText(page, '✨ Generate my plan');
-  await sleep(900);
-  await shot('9-plan.png');
 
   await browser.close();
   server.close();

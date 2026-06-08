@@ -1,9 +1,10 @@
 import React from 'react';
-import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Image, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { colors, gradients, radius, spacing, type } from '@/theme/colors';
 import type { Recipe } from '@/models/types';
+import { recipeImage } from '@/utils/images';
 import { DIET_LABELS } from '@/utils/targets';
 
 interface Props {
@@ -31,6 +32,7 @@ export function RecipeDetailModal({ visible, recipe, onClose, onLog }: Props) {
           </View>
 
           <ScrollView contentContainerStyle={styles.body}>
+            <Image source={{ uri: recipeImage(recipe, 600) }} style={styles.banner} resizeMode="cover" />
             <View style={styles.macroCard}>
               <Macro label="Calories" value={`${recipe.calories}`} />
               <Macro label="Protein" value={`${recipe.protein}g`} color={colors.exercise} />
@@ -93,6 +95,7 @@ const styles = StyleSheet.create({
   closeBtn: { width: 36, height: 36, borderRadius: 18, backgroundColor: colors.surfaceMuted, alignItems: 'center', justifyContent: 'center' },
   closeText: { color: colors.textSecondary, fontSize: 16, fontWeight: '700' },
   body: { padding: spacing.lg, paddingTop: 0 },
+  banner: { width: '100%', height: 170, borderRadius: radius.lg, backgroundColor: colors.surfaceMuted, marginBottom: spacing.lg },
   macroCard: { flexDirection: 'row', justifyContent: 'space-between', backgroundColor: colors.surface, borderRadius: radius.lg, borderWidth: 1, borderColor: colors.border, padding: spacing.lg },
   macro: { alignItems: 'center', flex: 1 },
   macroValue: { fontSize: 18, fontWeight: '700', color: colors.text },

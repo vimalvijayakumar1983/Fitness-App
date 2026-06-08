@@ -4,9 +4,15 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { TextField } from './TextField';
 import { FoodEditorModal } from './FoodEditorModal';
+import { Thumb } from './Thumb';
 import { colors, gradients, radius, spacing, type } from '@/theme/colors';
 import { foodsById, mergeFoods, searchFoods } from '@/data/foods';
+import { foodImage } from '@/utils/images';
 import type { Food, FoodItem, MealType } from '@/models/types';
+
+const CATEGORY_EMOJI: Record<Food['category'], string> = {
+  protein: '🍗', carb: '🍚', veg: '🥦', fruit: '🍎', dairy: '🧀', fat: '🥑', drink: '🥤', snack: '🍫', meal: '🍽️',
+};
 
 interface Props {
   visible: boolean;
@@ -118,14 +124,15 @@ export function FoodSearchModal({
               const fav = favoriteIds.includes(f.id);
               return (
                 <View key={f.id} style={[styles.row, qty > 0 && styles.rowActive]}>
-                  <Pressable style={styles.star} onPress={() => onToggleFavorite(f.id)} hitSlop={8}>
-                    <Text style={{ fontSize: 16, opacity: fav ? 1 : 0.3 }}>{fav ? '⭐' : '☆'}</Text>
-                  </Pressable>
+                  <Thumb uri={foodImage(f)} emoji={CATEGORY_EMOJI[f.category]} colors={gradients.meal} size={44} style={{ marginRight: spacing.md }} />
                   <Pressable style={styles.rowMain} onPress={() => setQty(f.id, qty + 1)} onLongPress={() => openEditor(f)}>
-                    <Text style={styles.foodName}>{f.name}</Text>
-                    <Text style={styles.foodMeta}>
+                    <Text style={styles.foodName} numberOfLines={1}>{f.name}</Text>
+                    <Text style={styles.foodMeta} numberOfLines={1}>
                       {f.serving} · {f.calories} kcal · P{f.protein} C{f.carbs} F{f.fat}
                     </Text>
+                  </Pressable>
+                  <Pressable style={styles.star} onPress={() => onToggleFavorite(f.id)} hitSlop={8}>
+                    <Text style={{ fontSize: 15, opacity: fav ? 1 : 0.3 }}>{fav ? '⭐' : '☆'}</Text>
                   </Pressable>
                   <Pressable style={styles.editBtn} onPress={() => openEditor(f)} hitSlop={6}>
                     <Text style={styles.editIcon}>✎</Text>

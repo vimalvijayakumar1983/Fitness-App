@@ -3,9 +3,11 @@ import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-nati
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { TextField } from './TextField';
 import { RecipeDetailModal } from './RecipeDetailModal';
-import { colors, radius, spacing, type } from '@/theme/colors';
+import { Thumb } from './Thumb';
+import { colors, gradients, radius, spacing, type } from '@/theme/colors';
 import type { DietPattern, Recipe } from '@/models/types';
 import { searchRecipes } from '@/data/recipes';
+import { recipeImage } from '@/utils/images';
 import { DIET_LABELS } from '@/utils/targets';
 
 interface Props {
@@ -55,7 +57,7 @@ export function RecipeLibraryModal({ visible, onClose, onLog }: Props) {
           <ScrollView contentContainerStyle={styles.list} keyboardShouldPersistTaps="handled">
             {results.map((r) => (
               <Pressable key={r.id} style={styles.card} onPress={() => setDetail(r)}>
-                <Text style={styles.cardEmoji}>{r.emoji}</Text>
+                <Thumb uri={recipeImage(r, 200)} emoji={r.emoji} colors={gradients.meal} size={52} style={{ marginRight: spacing.md }} />
                 <View style={{ flex: 1 }}>
                   <Text style={styles.cardName}>{r.name}</Text>
                   <Text style={styles.cardMeta}>{r.calories} kcal · P{r.protein} C{r.carbs} F{r.fat} · {r.timeMin} min</Text>

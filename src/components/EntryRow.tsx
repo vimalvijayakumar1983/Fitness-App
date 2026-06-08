@@ -2,6 +2,7 @@ import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { colors, radius, shadow, spacing, type } from '@/theme/colors';
 import { IconBadge } from './IconBadge';
+import { Thumb } from './Thumb';
 
 interface Props {
   emoji: string;
@@ -11,14 +12,20 @@ interface Props {
   meta?: string;
   /** Big value shown on the right (e.g. "320 kcal"). */
   value?: string;
+  /** Optional photo thumbnail; falls back to the emoji badge. */
+  imageUrl?: string;
   onRemove?: () => void;
 }
 
 /** A single logged item — icon badge, title/subtitle, optional value & remove. */
-export function EntryRow({ emoji, gradient, title, subtitle, meta, value, onRemove }: Props) {
+export function EntryRow({ emoji, gradient, title, subtitle, meta, value, imageUrl, onRemove }: Props) {
   return (
     <View style={styles.row}>
-      <IconBadge emoji={emoji} colors={gradient} size={42} />
+      {imageUrl ? (
+        <Thumb uri={imageUrl} emoji={emoji} colors={gradient} size={42} />
+      ) : (
+        <IconBadge emoji={emoji} colors={gradient} size={42} />
+      )}
       <View style={styles.body}>
         <Text style={styles.title} numberOfLines={1}>
           {title}

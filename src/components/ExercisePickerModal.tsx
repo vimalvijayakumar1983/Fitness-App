@@ -3,9 +3,15 @@ import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-nati
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { TextField } from './TextField';
 import { ExerciseEditorModal } from './ExerciseEditorModal';
-import { colors, radius, spacing, type } from '@/theme/colors';
-import type { ExerciseDef } from '@/models/types';
+import { Thumb } from './Thumb';
+import { colors, gradients, radius, spacing, type } from '@/theme/colors';
+import type { ExerciseCategory, ExerciseDef } from '@/models/types';
 import { CATEGORY_LABELS, MUSCLE_LABELS, mergeExercises, searchExercises } from '@/data/exercises';
+import { exerciseImage } from '@/utils/images';
+
+const CAT_EMOJI: Record<ExerciseCategory, string> = {
+  strength: '🏋️', bodyweight: '🤸', cardio: '🏃', sports: '⚽', flexibility: '🧘',
+};
 
 interface Props {
   visible: boolean;
@@ -85,9 +91,10 @@ export function ExercisePickerModal({ visible, customExercises, onPick, onUpsert
 
             {results.map((ex) => (
               <View key={ex.id} style={styles.row}>
+                <Thumb uri={exerciseImage(ex)} emoji={CAT_EMOJI[ex.category]} colors={gradients.exercise} size={44} style={{ marginRight: spacing.md }} />
                 <Pressable style={styles.rowMain} onPress={() => pick(ex)} onLongPress={() => openEditor(ex)}>
-                  <Text style={styles.name}>{ex.name}</Text>
-                  <Text style={styles.meta}>
+                  <Text style={styles.name} numberOfLines={1}>{ex.name}</Text>
+                  <Text style={styles.meta} numberOfLines={1}>
                     {CATEGORY_LABELS[ex.category]} · {MUSCLE_LABELS[ex.muscle]}
                     {ex.equipment ? ` · ${ex.equipment}` : ''}
                   </Text>

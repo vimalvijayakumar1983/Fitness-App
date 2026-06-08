@@ -4,19 +4,27 @@ import { ScreenContainer } from '@/components/ScreenContainer';
 import { Card } from '@/components/Card';
 import { PrimaryButton } from '@/components/PrimaryButton';
 import { ReadinessGauge } from '@/components/ReadinessGauge';
+import { Thumb } from '@/components/Thumb';
 import { GoalSetupModal } from '@/components/GoalSetupModal';
 import { RecipeLibraryModal } from '@/components/RecipeLibraryModal';
 import { RecipeDetailModal } from '@/components/RecipeDetailModal';
 import { useData } from '@/context/DataContext';
 import { colors, gradients, radius, spacing, type } from '@/theme/colors';
-import type { MealType, Recipe } from '@/models/types';
+import type { GoalType, MealType, Recipe } from '@/models/types';
 import { RECIPES_BY_ID } from '@/data/recipes';
-import { DIET_LABELS, GOAL_LABELS } from '@/utils/targets';
+import { recipeImage } from '@/utils/images';
+import { computeTargets, DIET_LABELS, GOAL_LABELS } from '@/utils/targets';
 import { adherenceScore, generatePlan, groceryFromPlan, planTotals } from '@/utils/planner';
 import { summarizeMacros } from '@/utils/selectors';
 import { todayISO } from '@/utils/date';
 
 const SLOT_EMOJI: Record<MealType, string> = { breakfast: '🌅', lunch: '☀️', dinner: '🌙', snack: '🍎' };
+
+const GOAL_CARDS: { goal: GoalType; emoji: string; blurb: string }[] = [
+  { goal: 'lose', emoji: '🔥', blurb: 'Lean down' },
+  { goal: 'maintain', emoji: '⚖️', blurb: 'Stay balanced' },
+  { goal: 'gain', emoji: '💪', blurb: 'Build muscle' },
+];
 
 export function PlanScreen() {
   const { data, addMeal, updateProfile, setPlan } = useData();
@@ -47,6 +55,13 @@ export function PlanScreen() {
     });
   };
 
+  const pickGoal = (goal: GoalType) => {
+    const next = { ...profile, goal };
+    const t = computeTargets(next);
+    updateProfile({ goal, calorieTarget: t.calorieTarget, macroTargets: t.macroTargets });
+    setPlan(generatePlan({ ...next, ...t }, today));
+  };
+
   const toggleCheck = (name: string) =>
     setChecked((prev) => {
       const next = new Set(prev);
@@ -56,6 +71,21 @@ export function PlanScreen() {
 
   return (
     <ScreenContainer title="Plan" subtitle="Your meal planner">
+      {/* Goal picker (Delicut-style, goal-led) */}
+      <Text style={styles.goalHeading}>What's your goal?</Text>
+      <View style={styles.goalRow}>
+        {GOAL_CARDS.map((g) => {
+          const active = profile.goal === g.goal;
+          return (
+            <Pressable key={g.goal} style={[styles.goalCard, active && styles.goalCardActive]} onPress={() => pickGoal(g.goal)}>
+              <Text style={styles.goalEmoji}>{g.emoji}</Text>
+              <Text style={[styles.goalLabel, active && styles.goalLabelActive]}>{GOAL_LABELS[g.goal]}</Text>
+              <Text style={styles.goalBlurb}>{g.blurb}</Text>
+            </Pressable>
+          );
+        })}
+      </View>
+
       {/* Targets */}
       <Card
         title="Your targets"
@@ -101,7 +131,7 @@ export function PlanScreen() {
               return (
                 <View key={m.slot} style={styles.planRow}>
                   <Pressable style={styles.planMain} onPress={() => setDetail(r)}>
-                    <Text style={styles.slotEmoji}>{SLOT_EMOJI[m.slot]}</Text>
+                    <Thumb uri={recipeImage(r, 200)} emoji={r.emoji} colors={gradients.meal} size={48} />
                     <View style={{ flex: 1 }}>
                       <Text style={styles.slotLabel}>{m.slot}{m.servings > 1 ? ` · ${m.servings} servings` : ''}</Text>
                       <Text style={styles.planName}>{r.name}</Text>
@@ -156,6 +186,19 @@ function Tag({ label, color }: { label: string; color: string }) {
 }
 
 const styles = StyleSheet.create({
+  goalHeading: { ...type.sectionTitle, marginBottom: spacing.md },
+  goalRow: { flexDirection: 'row', gap: spacing.md, marginBottom: spacing.lg },
+  goalCard: {
+    flex: 1, alignItems: 'center', backgroundColor: colors.surface,
+    borderRadius: radius.lg, borderWidth: 1.5, borderColor: colors.border,
+    paddingVertical: spacing.lg, paddingHorizontal: spacing.sm,
+  },
+  goalCardActive: { borderColor: colors.primary, backgroundColor: colors.primarySoft },
+  goalEmoji: { fontSize: 28 },
+  goalLabel: { ...type.caption, fontWeight: '700', color: colors.text, marginTop: 6, textAlign: 'center' },
+  goalLabelActive: { color: colors.primaryDark },
+  goalBlurb: { ...type.caption, fontSize: 11, marginTop: 1 },
+
   edit: { ...type.caption, color: colors.primary, fontWeight: '700' },
   unit: { ...type.body, color: colors.textSecondary },
   sub: { ...type.caption, marginTop: 4 },
