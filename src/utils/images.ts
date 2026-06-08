@@ -22,11 +22,11 @@ function nameKeyword(name: string): string {
 }
 
 export function foodImage(food: Food, size = 200): string {
-  return url(`${nameKeyword(food.name)},food`, food.id, size);
+  return food.imageUrl || url(`${nameKeyword(food.name)},food`, food.id, size);
 }
 
 export function recipeImage(recipe: Recipe, size = 400): string {
-  return url(`${nameKeyword(recipe.name)},meal`, recipe.id, size);
+  return recipe.imageUrl || url(`${nameKeyword(recipe.name)},meal`, recipe.id, size);
 }
 
 /** Generic keyword thumbnail (for logged entries where we only have a name). */
@@ -35,6 +35,7 @@ export function keywordImage(keyword: string, id: string, suffix = 'food', size 
 }
 
 export function exerciseImage(ex: ExerciseDef, size = 200): string {
+  if (ex.imageUrl) return ex.imageUrl;
   const kw =
     ex.category === 'cardio' || ex.category === 'sports'
       ? `${nameKeyword(ex.name)},fitness`

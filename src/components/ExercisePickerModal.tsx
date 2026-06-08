@@ -16,6 +16,7 @@ const CAT_EMOJI: Record<ExerciseCategory, string> = {
 interface Props {
   visible: boolean;
   customExercises: ExerciseDef[];
+  cmsExercises?: ExerciseDef[];
   onPick: (exercise: ExerciseDef) => void;
   onUpsert: (exercise: ExerciseDef) => void;
   onDelete: (id: string) => void;
@@ -26,14 +27,14 @@ const CATEGORY_FILTERS = ['all', 'strength', 'bodyweight', 'cardio', 'sports', '
 const MUSCLE_FILTERS = ['all', 'chest', 'back', 'shoulders', 'arms', 'legs', 'glutes', 'core', 'full_body', 'cardio'];
 
 /** Browse/search the exercise catalog, filter by type & muscle, or create one. */
-export function ExercisePickerModal({ visible, customExercises, onPick, onUpsert, onDelete, onClose }: Props) {
+export function ExercisePickerModal({ visible, customExercises, cmsExercises = [], onPick, onUpsert, onDelete, onClose }: Props) {
   const [query, setQuery] = useState('');
   const [category, setCategory] = useState('all');
   const [muscle, setMuscle] = useState('all');
   const [editorOpen, setEditorOpen] = useState(false);
   const [editing, setEditing] = useState<ExerciseDef | null>(null);
 
-  const list = useMemo(() => mergeExercises(customExercises), [customExercises]);
+  const list = useMemo(() => mergeExercises(customExercises, cmsExercises), [customExercises, cmsExercises]);
   const results = useMemo(
     () => searchExercises(query, list, { category, muscle }),
     [query, list, category, muscle],

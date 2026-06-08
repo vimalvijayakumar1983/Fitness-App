@@ -17,7 +17,7 @@ import { keywordImage } from '@/utils/images';
 import { formatDuration, formatTime, todayISO } from '@/utils/date';
 
 export function ExerciseScreen() {
-  const { data, addExercise, removeEntry, syncHealthData, upsertCustomExercise, deleteCustomExercise } = useData();
+  const { data, cms, addExercise, removeEntry, syncHealthData, upsertCustomExercise, deleteCustomExercise } = useData();
   const [activity, setActivity] = useState('');
   const [duration, setDuration] = useState('');
   const [calories, setCalories] = useState('');
@@ -155,6 +155,7 @@ export function ExerciseScreen() {
       <ExercisePickerModal
         visible={pickerOpen}
         customExercises={data.customExercises}
+        cmsExercises={cms.exercises}
         onPick={(ex) => {
           setActivity(ex.name);
           setSelectedMet(ex.met);

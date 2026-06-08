@@ -137,6 +137,8 @@ export interface Food {
   fat: number;
   /** Coarse grouping for browsing. */
   category: 'protein' | 'carb' | 'veg' | 'fruit' | 'dairy' | 'fat' | 'drink' | 'snack' | 'meal';
+  /** Optional photo from the CMS. */
+  imageUrl?: string;
 }
 
 /** Movement categories for the exercise catalog. */
@@ -170,6 +172,8 @@ export interface ExerciseDef {
   /** Primary equipment, e.g. "Barbell", "Dumbbell", "Bodyweight", "Machine". */
   equipment?: string;
   met: number;
+  /** Optional photo from the CMS. */
+  imageUrl?: string;
 }
 
 export interface RecipeIngredient {
@@ -193,6 +197,8 @@ export interface Recipe {
   fat: number;
   ingredients: RecipeIngredient[];
   steps: string[];
+  /** Optional photo from the CMS. */
+  imageUrl?: string;
 }
 
 /** One slot in a generated day plan. */

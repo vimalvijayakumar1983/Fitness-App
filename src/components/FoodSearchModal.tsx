@@ -19,6 +19,7 @@ interface Props {
   mealType: MealType;
   favoriteIds: string[];
   customFoods: Food[];
+  cmsFoods?: Food[];
   onToggleFavorite: (foodId: string) => void;
   onUpsertFood: (food: Food) => void;
   onDeleteFood: (foodId: string) => void;
@@ -34,6 +35,7 @@ export function FoodSearchModal({
   mealType,
   favoriteIds,
   customFoods,
+  cmsFoods = [],
   onToggleFavorite,
   onUpsertFood,
   onDeleteFood,
@@ -45,7 +47,7 @@ export function FoodSearchModal({
   const [editorOpen, setEditorOpen] = useState(false);
   const [editing, setEditing] = useState<Food | null>(null);
 
-  const foods = useMemo(() => mergeFoods(customFoods), [customFoods]);
+  const foods = useMemo(() => mergeFoods(customFoods, cmsFoods), [customFoods, cmsFoods]);
   const byId = useMemo(() => foodsById(foods), [foods]);
 
   const results = useMemo(() => {

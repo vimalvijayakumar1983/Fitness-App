@@ -2,6 +2,8 @@ import type { DayPlan, MealType, PlannedMeal, Profile, Recipe } from '@/models/t
 import { RECIPES, RECIPES_BY_ID, recipesForDiet } from '@/data/recipes';
 import type { MacroTotals } from '@/utils/selectors';
 
+type RecipeMap = Record<string, Recipe>;
+
 /** Fraction of the daily calorie target allotted to each meal slot. */
 const SLOT_FRACTIONS: { slot: MealType; frac: number }[] = [
   { slot: 'breakfast', frac: 0.25 },
@@ -17,9 +19,9 @@ const clamp = (n: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, n
  * scaled calories land closest to that slot's target. Picks randomly among the
  * best matches so "regenerate" produces variety.
  */
-export function generatePlan(profile: Profile, date: string): DayPlan {
-  const pool = recipesForDiet(profile.diet);
-  const candidates = pool.length >= 4 ? pool : RECIPES; // fall back if a diet is sparse
+export function generatePlan(profile: Profile, date: string, recipes: Recipe[] = RECIPES): DayPlan {
+  const pool = recipesForDiet(profile.diet, recipes);
+  const candidates = pool.length >= 4 ? pool : recipes; // fall back if a diet is sparse
 
   const meals: PlannedMeal[] = [];
   const used = new Set<string>();
@@ -45,10 +47,10 @@ export function generatePlan(profile: Profile, date: string): DayPlan {
 }
 
 /** Total macros across a plan's meals (servings applied). */
-export function planTotals(plan: DayPlan): MacroTotals {
+export function planTotals(plan: DayPlan, byId: RecipeMap = RECIPES_BY_ID): MacroTotals {
   return plan.meals.reduce<MacroTotals>(
     (acc, m) => {
-      const r = RECIPES_BY_ID[m.recipeId];
+      const r = byId[m.recipeId];
       if (!r) return acc;
       acc.calories += r.calories * m.servings;
       acc.protein += r.protein * m.servings;
@@ -66,10 +68,10 @@ export interface GroceryItem {
 }
 
 /** Aggregate ingredients across a plan into a deduped grocery list. */
-export function groceryFromPlan(plan: DayPlan): GroceryItem[] {
+export function groceryFromPlan(plan: DayPlan, byId: RecipeMap = RECIPES_BY_ID): GroceryItem[] {
   const counts = new Map<string, number>();
   for (const m of plan.meals) {
-    const r = RECIPES_BY_ID[m.recipeId];
+    const r = byId[m.recipeId];
     if (!r) continue;
     for (const ing of r.ingredients) {
       const key = ing.name;

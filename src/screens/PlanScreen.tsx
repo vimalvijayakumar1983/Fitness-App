@@ -11,7 +11,7 @@ import { RecipeDetailModal } from '@/components/RecipeDetailModal';
 import { useData } from '@/context/DataContext';
 import { colors, gradients, radius, spacing, type } from '@/theme/colors';
 import type { GoalType, MealType, Recipe } from '@/models/types';
-import { RECIPES_BY_ID } from '@/data/recipes';
+import { mergeRecipes, recipesById } from '@/data/recipes';
 import { recipeImage } from '@/utils/images';
 import { computeTargets, DIET_LABELS, GOAL_LABELS } from '@/utils/targets';
 import { adherenceScore, generatePlan, groceryFromPlan, planTotals } from '@/utils/planner';
@@ -27,7 +27,7 @@ const GOAL_CARDS: { goal: GoalType; emoji: string; blurb: string }[] = [
 ];
 
 export function PlanScreen() {
-  const { data, addMeal, updateProfile, setPlan } = useData();
+  const { data, cms, addMeal, updateProfile, setPlan } = useData();
   const [setupOpen, setSetupOpen] = useState(false);
   const [libraryOpen, setLibraryOpen] = useState(false);
   const [detail, setDetail] = useState<Recipe | null>(null);
@@ -38,8 +38,11 @@ export function PlanScreen() {
   const logged = summarizeMacros(data, today);
   const adherence = adherenceScore(logged, profile.calorieTarget, profile.macroTargets);
 
-  const grocery = useMemo(() => (plan ? groceryFromPlan(plan) : []), [plan]);
-  const totals = useMemo(() => (plan ? planTotals(plan) : null), [plan]);
+  const allRecipes = useMemo(() => mergeRecipes(cms.recipes), [cms.recipes]);
+  const byId = useMemo(() => recipesById(allRecipes), [allRecipes]);
+
+  const grocery = useMemo(() => (plan ? groceryFromPlan(plan, byId) : []), [plan, byId]);
+  const totals = useMemo(() => (plan ? planTotals(plan, byId) : null), [plan, byId]);
 
   const logRecipe = (recipe: Recipe, slot?: MealType, servings = 1) => {
     addMeal({
@@ -59,7 +62,7 @@ export function PlanScreen() {
     const next = { ...profile, goal };
     const t = computeTargets(next);
     updateProfile({ goal, calorieTarget: t.calorieTarget, macroTargets: t.macroTargets });
-    setPlan(generatePlan({ ...next, ...t }, today));
+    setPlan(generatePlan({ ...next, ...t }, today, allRecipes));
   };
 
   const toggleCheck = (name: string) =>
@@ -116,17 +119,17 @@ export function PlanScreen() {
       {/* Meal plan */}
       <Card
         title="Meal plan"
-        trailing={plan ? <Pressable onPress={() => setPlan(generatePlan(profile, today))}><Text style={styles.edit}>Regenerate</Text></Pressable> : undefined}
+        trailing={plan ? <Pressable onPress={() => setPlan(generatePlan(profile, today, allRecipes))}><Text style={styles.edit}>Regenerate</Text></Pressable> : undefined}
       >
         {!plan ? (
           <>
             <Text style={styles.hint}>Generate a day of meals matched to your {DIET_LABELS[profile.diet].toLowerCase()} target of {profile.calorieTarget} kcal.</Text>
-            <PrimaryButton label="✨ Generate my plan" onPress={() => setPlan(generatePlan(profile, today))} gradient={gradients.primary} style={{ marginTop: spacing.lg }} />
+            <PrimaryButton label="✨ Generate my plan" onPress={() => setPlan(generatePlan(profile, today, allRecipes))} gradient={gradients.primary} style={{ marginTop: spacing.lg }} />
           </>
         ) : (
           <>
             {plan.meals.map((m) => {
-              const r = RECIPES_BY_ID[m.recipeId];
+              const r = byId[m.recipeId];
               if (!r) return null;
               return (
                 <View key={m.slot} style={styles.planRow}>
@@ -171,7 +174,7 @@ export function PlanScreen() {
       ) : null}
 
       <GoalSetupModal visible={setupOpen} profile={profile} onClose={() => setSetupOpen(false)} onSave={updateProfile} />
-      <RecipeLibraryModal visible={libraryOpen} onClose={() => setLibraryOpen(false)} onLog={(r) => logRecipe(r)} />
+      <RecipeLibraryModal visible={libraryOpen} recipes={allRecipes} onClose={() => setLibraryOpen(false)} onLog={(r) => logRecipe(r)} />
       <RecipeDetailModal visible={!!detail} recipe={detail} onClose={() => setDetail(null)} onLog={(r) => logRecipe(r)} />
     </ScreenContainer>
   );

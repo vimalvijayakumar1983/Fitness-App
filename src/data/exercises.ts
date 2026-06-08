@@ -1,4 +1,5 @@
 import { ExerciseDef } from '@/models/types';
+import { mergeById } from '@/utils/merge';
 
 /**
  * Offline exercise catalog: gym/strength movements grouped by muscle, plus
@@ -161,14 +162,12 @@ export const CATEGORY_LABELS: Record<string, string> = {
   flexibility: 'Flexibility',
 };
 
-/** Merge user customs over bundled exercises by id (custom wins). */
-export function mergeExercises(custom: ExerciseDef[]): ExerciseDef[] {
-  if (!custom.length) return EXERCISES;
-  const overrides = new Map(custom.map((e) => [e.id, e]));
-  const merged = EXERCISES.map((e) => overrides.get(e.id) ?? e);
-  const bundledIds = new Set(EXERCISES.map((e) => e.id));
-  for (const e of custom) if (!bundledIds.has(e.id)) merged.unshift(e);
-  return merged;
+/**
+ * Effective exercise list = bundled, with admin CMS exercises layered on, then
+ * the user's own custom exercises (which win on id collisions).
+ */
+export function mergeExercises(custom: ExerciseDef[] = [], cms: ExerciseDef[] = []): ExerciseDef[] {
+  return mergeById(EXERCISES, [cms, custom]);
 }
 
 /** Estimate calories burned for a session. */

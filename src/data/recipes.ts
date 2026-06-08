@@ -1,4 +1,5 @@
 import { Recipe } from '@/models/types';
+import { mergeById } from '@/utils/merge';
 
 /**
  * Offline recipe library for the meal planner. Macros are per serving.
@@ -166,13 +167,22 @@ export const RECIPES_BY_ID: Record<string, Recipe> = Object.fromEntries(
   RECIPES.map((r) => [r.id, r]),
 );
 
-export function recipesForDiet(diet: string): Recipe[] {
-  return RECIPES.filter((r) => r.diets.includes(diet as Recipe['diets'][number]));
+/** Effective recipe list = bundled with admin CMS recipes layered on. */
+export function mergeRecipes(cms: Recipe[] = []): Recipe[] {
+  return mergeById(RECIPES, [cms]);
 }
 
-export function searchRecipes(query: string, diet: string = 'all'): Recipe[] {
+export function recipesById(list: Recipe[]): Record<string, Recipe> {
+  return Object.fromEntries(list.map((r) => [r.id, r]));
+}
+
+export function recipesForDiet(diet: string, list: Recipe[] = RECIPES): Recipe[] {
+  return list.filter((r) => r.diets.includes(diet as Recipe['diets'][number]));
+}
+
+export function searchRecipes(query: string, diet: string = 'all', list: Recipe[] = RECIPES): Recipe[] {
   const q = query.trim().toLowerCase();
-  return RECIPES.filter((r) => {
+  return list.filter((r) => {
     if (diet !== 'all' && !r.diets.includes(diet as Recipe['diets'][number])) return false;
     if (q && !r.name.toLowerCase().includes(q)) return false;
     return true;

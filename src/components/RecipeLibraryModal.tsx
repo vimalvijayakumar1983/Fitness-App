@@ -12,18 +12,19 @@ import { DIET_LABELS } from '@/utils/targets';
 
 interface Props {
   visible: boolean;
+  recipes: Recipe[];
   onClose: () => void;
   onLog: (recipe: Recipe) => void;
 }
 
 const DIET_FILTERS: ('all' | DietPattern)[] = ['all', 'balanced', 'high_protein', 'keto', 'low_carb', 'mediterranean', 'vegetarian', 'vegan'];
 
-export function RecipeLibraryModal({ visible, onClose, onLog }: Props) {
+export function RecipeLibraryModal({ visible, recipes, onClose, onLog }: Props) {
   const [query, setQuery] = useState('');
   const [diet, setDiet] = useState<'all' | DietPattern>('all');
   const [detail, setDetail] = useState<Recipe | null>(null);
 
-  const results = useMemo(() => searchRecipes(query, diet), [query, diet]);
+  const results = useMemo(() => searchRecipes(query, diet, recipes), [query, diet, recipes]);
 
   return (
     <Modal visible={visible} animationType="slide" onRequestClose={onClose}>

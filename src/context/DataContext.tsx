@@ -20,11 +20,14 @@ import {
 } from '@/models/types';
 import { loadAppData, saveAppData } from '@/services/storage';
 import { getHealthProvider } from '@/services/health/healthService';
+import { fetchCmsContent, CmsContent } from '@/services/api';
 import { makeId, todayISO } from '@/utils/date';
 
 interface DataContextValue {
   data: AppData;
   loading: boolean;
+  /** Admin-managed content fetched from the backend (merged over bundled data). */
+  cms: CmsContent;
 
   addMeal: (meal: Omit<MealEntry, 'id' | 'loggedAt'>) => void;
   addExercise: (exercise: Omit<ExerciseEntry, 'id' | 'loggedAt'>) => void;
@@ -56,6 +59,12 @@ const DataContext = createContext<DataContextValue | undefined>(undefined);
 export function DataProvider({ children }: { children: React.ReactNode }) {
   const [data, setData] = useState<AppData>(emptyAppData);
   const [loading, setLoading] = useState(true);
+  const [cms, setCms] = useState<CmsContent>({ foods: [], exercises: [], recipes: [] });
+
+  // Pull admin-managed content from the backend (best-effort; offline-safe).
+  useEffect(() => {
+    fetchCmsContent().then(setCms).catch(() => {});
+  }, []);
 
   // Load persisted data once on mount.
   useEffect(() => {
@@ -228,6 +237,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     () => ({
       data,
       loading,
+      cms,
       addMeal,
       addExercise,
       addMood,
@@ -246,6 +256,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     [
       data,
       loading,
+      cms,
       addMeal,
       addExercise,
       addMood,

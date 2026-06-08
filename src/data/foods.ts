@@ -1,4 +1,5 @@
 import { Food } from '@/models/types';
+import { mergeById } from '@/utils/merge';
 
 /**
  * Curated, offline food database spanning global staples and cuisines. Macros
@@ -142,14 +143,12 @@ export const FOODS: Food[] = [
   { id: 'f_pancakes', name: 'Pancakes', serving: '3 pancakes', calories: 350, protein: 8, carbs: 58, fat: 9, category: 'meal' },
 ];
 
-/** Merge user customs over bundled foods by id (custom wins), customs appended. */
-export function mergeFoods(custom: Food[]): Food[] {
-  if (!custom.length) return FOODS;
-  const overrides = new Map(custom.map((f) => [f.id, f]));
-  const merged = FOODS.map((f) => overrides.get(f.id) ?? f);
-  const bundledIds = new Set(FOODS.map((f) => f.id));
-  for (const f of custom) if (!bundledIds.has(f.id)) merged.unshift(f);
-  return merged;
+/**
+ * Effective food list = bundled, with admin CMS foods layered on, then the
+ * user's own custom foods (which win on id collisions).
+ */
+export function mergeFoods(custom: Food[] = [], cms: Food[] = []): Food[] {
+  return mergeById(FOODS, [cms, custom]);
 }
 
 export function foodsById(foods: Food[]): Record<string, Food> {

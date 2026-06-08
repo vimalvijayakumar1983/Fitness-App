@@ -6,9 +6,15 @@
  * food search, AI coach). Point `API_BASE_URL` at your running server.
  */
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import type { ExerciseDef, Food, Recipe } from '@/models/types';
 
-// For a real device, replace localhost with your machine's LAN IP.
-export const API_BASE_URL = 'http://localhost:4000/api';
+/**
+ * Base URL comes from EXPO_PUBLIC_API_URL (inlined at build time). When unset,
+ * the app runs entirely on bundled + local data so nothing breaks offline.
+ */
+const API_ORIGIN = process.env.EXPO_PUBLIC_API_URL?.replace(/\/$/, '') || 'http://localhost:4000';
+export const API_BASE_URL = `${API_ORIGIN}/api`;
+export const apiEnabled = !!process.env.EXPO_PUBLIC_API_URL;
 
 const TOKEN_KEY = 'fitnessapp:token';
 
@@ -52,6 +58,28 @@ async function request<T>(
 export interface AuthResult {
   token: string;
   user: { id: string; email: string; name: string | null };
+}
+
+export interface CmsContent {
+  foods: Food[];
+  exercises: ExerciseDef[];
+  recipes: Recipe[];
+}
+
+/** Best-effort fetch of admin content; returns empty sets on any failure. */
+export async function fetchCmsContent(): Promise<CmsContent> {
+  const empty: CmsContent = { foods: [], exercises: [], recipes: [] };
+  if (!apiEnabled) return empty;
+  try {
+    const data = await api.contentAll();
+    return {
+      foods: data.foods ?? [],
+      exercises: data.exercises ?? [],
+      recipes: data.recipes ?? [],
+    };
+  } catch {
+    return empty;
+  }
 }
 
 export interface FoodResult {
@@ -110,6 +138,9 @@ export const api = {
     request<{ metric: string; points: { date: string; value: number }[] }>(
       `/analytics/trend?metric=${metric}&days=${days}`,
     ),
+
+  // CMS content (admin-managed; public reads)
+  contentAll: () => request<CmsContent>('/content/all', { auth: false }),
 
   // AI coach
   coachChat: (message: string, history?: { role: 'user' | 'assistant'; content: string }[]) =>
