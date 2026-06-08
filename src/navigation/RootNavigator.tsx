@@ -69,7 +69,7 @@ function FloatingTabBar({ state, navigation }: BottomTabBarProps) {
 
 const navTheme: Theme = {
   ...DefaultTheme,
-  dark: true,
+  dark: false,
   colors: {
     ...DefaultTheme.colors,
     background: colors.background,

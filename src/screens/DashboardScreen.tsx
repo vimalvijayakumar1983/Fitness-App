@@ -168,7 +168,7 @@ export function DashboardScreen() {
               size={128}
               strokeWidth={12}
               colors={gradients.exercise}
-              trackColor="rgba(255,255,255,0.06)"
+              trackColor="rgba(20,40,20,0.07)"
             />
             <View style={styles.ringAbs}>
               <ActivityRing
@@ -176,7 +176,7 @@ export function DashboardScreen() {
                 size={98}
                 strokeWidth={12}
                 colors={gradients.coral}
-                trackColor="rgba(255,255,255,0.06)"
+                trackColor="rgba(20,40,20,0.07)"
               />
             </View>
             <View style={styles.ringAbs}>
@@ -185,7 +185,7 @@ export function DashboardScreen() {
                 size={68}
                 strokeWidth={12}
                 colors={gradients.sleep}
-                trackColor="rgba(255,255,255,0.06)"
+                trackColor="rgba(20,40,20,0.07)"
               />
             </View>
           </View>

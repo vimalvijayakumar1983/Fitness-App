@@ -1,60 +1,60 @@
 import { Platform, TextStyle, ViewStyle } from 'react-native';
 
 /**
- * Dark, immersive "wearable-grade" theme — near-black canvas, glowing gradient
- * accents, glass surfaces, vivid data-viz colors. (Whoop / Oura / Apple Fitness.)
+ * Light, fresh "healthy food brand" theme — clean white canvas, vibrant green
+ * accent, soft surfaces, real food photography. (Delicut-inspired.)
  */
 
 export const colors = {
   // Canvas & surfaces
-  background: '#080B10', // near-black, slight blue
-  backgroundAlt: '#10151D',
-  surface: '#141B25', // card
-  surfaceMuted: '#1B2430',
-  glassBorder: 'rgba(255,255,255,0.06)',
-  border: '#222C3A',
-  borderStrong: '#2C3848',
+  background: '#FBFCFA', // warm off-white
+  backgroundAlt: '#F1F4EE', // input / muted fill
+  surface: '#FFFFFF', // card
+  surfaceMuted: '#EEF1EA',
+  glassBorder: 'rgba(20,40,20,0.05)',
+  border: '#E7EBE2',
+  borderStrong: '#D6DCCD',
 
   // Text
-  text: '#F3F6F9',
-  textSecondary: '#AEB9C6',
-  textMuted: '#6A7686',
-  textInverse: '#0A0E13',
+  text: '#1A211A', // near-black, slight warm green
+  textSecondary: '#586156',
+  textMuted: '#949D90',
+  textInverse: '#FFFFFF',
 
   // Brand
-  primary: '#3DE0A0', // vivid mint
-  primaryDark: '#1FB57E',
-  primarySoft: 'rgba(61,224,160,0.14)',
-  accent: '#FF7A59', // coral
-  accentSoft: 'rgba(255,122,89,0.14)',
+  primary: '#23A455', // fresh leaf green
+  primaryDark: '#1B8A46',
+  primarySoft: 'rgba(35,164,85,0.12)',
+  accent: '#F2784B', // warm coral
+  accentSoft: 'rgba(242,120,75,0.12)',
 
   // Status
-  success: '#3DE0A0',
-  warning: '#FFC24B',
-  danger: '#FF6B6B',
+  success: '#23A455',
+  warning: '#E8A317',
+  danger: '#E5484D',
 
-  // Per-domain accent (vivid on dark)
-  meal: '#FF8A5B',
-  exercise: '#3DE0A0',
-  mind: '#A78BFA',
-  sleep: '#5B8DEF',
-  water: '#38BDF8',
+  // Per-domain accent (tuned for light backgrounds)
+  meal: '#F2784B',
+  exercise: '#23A455',
+  mind: '#8B5CF6',
+  sleep: '#3B82F6',
+  water: '#1FAFCB',
 
-  glass: 'rgba(255,255,255,0.04)',
+  glass: 'rgba(20,40,20,0.02)',
 } as const;
 
-/** Glowing gradient pairs per domain. */
+/** Gradient pairs per domain. */
 export const gradients = {
-  app: ['#080B10', '#0C1119'] as const,
-  hero: ['#16202E', '#0D1521'] as const,
-  meal: ['#FFB07A', '#FF6B4A'] as const,
-  exercise: ['#5CF0B8', '#1FB57E'] as const,
-  mind: ['#C4ABFF', '#8B6CF0'] as const,
-  sleep: ['#7FB0FF', '#3D6FE0'] as const,
-  water: ['#67D6F7', '#2BA6D9'] as const,
-  primary: ['#5CF0B8', '#1FB57E'] as const,
-  coral: ['#FFA07A', '#FF6B4A'] as const,
-  readiness: ['#3DE0A0', '#FFC24B'] as const, // low→high sweep
+  app: ['#FBFCFA', '#F2F6EF'] as const,
+  hero: ['#E9F6EE', '#DCEFE2'] as const,
+  meal: ['#FB9E6E', '#F2784B'] as const,
+  exercise: ['#48C97E', '#23A455'] as const,
+  mind: ['#A78BFA', '#8B5CF6'] as const,
+  sleep: ['#60A5FA', '#3B82F6'] as const,
+  water: ['#56C7DD', '#1FAFCB'] as const,
+  primary: ['#48C97E', '#23A455'] as const,
+  coral: ['#FB9E6E', '#F2784B'] as const,
+  readiness: ['#F2784B', '#23A455'] as const, // low→high sweep
 } as const;
 
 export type GradientName = keyof typeof gradients;
@@ -79,33 +79,33 @@ export const radius = {
 /** Soft elevation for dark surfaces. */
 export const shadow: Record<'sm' | 'md' | 'lg', ViewStyle> = {
   sm: Platform.select({
-    web: { boxShadow: '0 2px 12px rgba(0,0,0,0.35)' } as unknown as ViewStyle,
+    web: { boxShadow: '0 2px 10px rgba(28,50,28,0.06)' } as unknown as ViewStyle,
     default: {
-      shadowColor: '#000',
-      shadowOpacity: 0.35,
-      shadowRadius: 10,
-      shadowOffset: { width: 0, height: 4 },
-      elevation: 3,
+      shadowColor: '#1C321C',
+      shadowOpacity: 0.06,
+      shadowRadius: 8,
+      shadowOffset: { width: 0, height: 3 },
+      elevation: 2,
     },
   })!,
   md: Platform.select({
-    web: { boxShadow: '0 10px 30px rgba(0,0,0,0.45)' } as unknown as ViewStyle,
+    web: { boxShadow: '0 10px 28px rgba(28,50,28,0.09)' } as unknown as ViewStyle,
     default: {
-      shadowColor: '#000',
-      shadowOpacity: 0.45,
-      shadowRadius: 20,
-      shadowOffset: { width: 0, height: 10 },
-      elevation: 7,
+      shadowColor: '#1C321C',
+      shadowOpacity: 0.1,
+      shadowRadius: 18,
+      shadowOffset: { width: 0, height: 8 },
+      elevation: 6,
     },
   })!,
   lg: Platform.select({
-    web: { boxShadow: '0 20px 50px rgba(0,0,0,0.55)' } as unknown as ViewStyle,
+    web: { boxShadow: '0 18px 44px rgba(28,50,28,0.12)' } as unknown as ViewStyle,
     default: {
-      shadowColor: '#000',
-      shadowOpacity: 0.55,
-      shadowRadius: 34,
-      shadowOffset: { width: 0, height: 18 },
-      elevation: 12,
+      shadowColor: '#1C321C',
+      shadowOpacity: 0.14,
+      shadowRadius: 30,
+      shadowOffset: { width: 0, height: 16 },
+      elevation: 10,
     },
   })!,
 };
@@ -131,17 +131,23 @@ export function hexA(hex: string, alpha: number): string {
   return `${hex}${a}`;
 }
 
-const displayFont = Platform.select({ ios: 'Georgia', default: 'serif' });
+// Clean modern sans across the app (system stack on web matches the fresh,
+// rounded look of healthy-food brands like Delicut).
+const sansFont = Platform.select({
+  web: '"Poppins", "Inter", "Segoe UI", system-ui, -apple-system, sans-serif',
+  ios: 'System',
+  default: 'sans-serif',
+});
 
 export const type: Record<string, TextStyle> = {
-  display: { fontFamily: displayFont, fontSize: 32, fontWeight: '600', color: colors.text, letterSpacing: -0.5 },
-  title: { fontSize: 22, fontWeight: '700', color: colors.text, letterSpacing: -0.3 },
-  sectionTitle: { fontSize: 16, fontWeight: '700', color: colors.text, letterSpacing: -0.2 },
-  metric: { fontSize: 30, fontWeight: '300', color: colors.text, letterSpacing: -1 },
-  metricSmall: { fontSize: 22, fontWeight: '500', color: colors.text, letterSpacing: -0.5 },
-  body: { fontSize: 15, fontWeight: '400', color: colors.text },
-  label: { fontSize: 11, fontWeight: '700', color: colors.textMuted, letterSpacing: 0.6, textTransform: 'uppercase' },
-  caption: { fontSize: 13, fontWeight: '400', color: colors.textMuted },
+  display: { fontFamily: sansFont, fontSize: 30, fontWeight: '800', color: colors.text, letterSpacing: -0.6 },
+  title: { fontFamily: sansFont, fontSize: 22, fontWeight: '800', color: colors.text, letterSpacing: -0.4 },
+  sectionTitle: { fontFamily: sansFont, fontSize: 16, fontWeight: '700', color: colors.text, letterSpacing: -0.2 },
+  metric: { fontFamily: sansFont, fontSize: 30, fontWeight: '700', color: colors.text, letterSpacing: -1 },
+  metricSmall: { fontFamily: sansFont, fontSize: 22, fontWeight: '700', color: colors.text, letterSpacing: -0.5 },
+  body: { fontFamily: sansFont, fontSize: 15, fontWeight: '400', color: colors.text },
+  label: { fontFamily: sansFont, fontSize: 11, fontWeight: '700', color: colors.textMuted, letterSpacing: 0.6, textTransform: 'uppercase' },
+  caption: { fontFamily: sansFont, fontSize: 13, fontWeight: '400', color: colors.textMuted },
 };
 
 export type ColorName = keyof typeof colors;

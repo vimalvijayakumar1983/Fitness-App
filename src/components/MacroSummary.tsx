@@ -29,7 +29,7 @@ export function MacroSummary({ totals, calorieTarget, macroTargets }: Props) {
           size={128}
           strokeWidth={13}
           colors={gradients.coral}
-          trackColor="rgba(255,255,255,0.06)"
+          trackColor="rgba(20,40,20,0.07)"
         />
         <View style={styles.ringCenter} pointerEvents="none">
           <Text style={styles.remaining}>{remaining}</Text>
