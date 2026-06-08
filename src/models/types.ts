@@ -172,6 +172,41 @@ export interface ExerciseDef {
   met: number;
 }
 
+export interface RecipeIngredient {
+  name: string;
+  quantity: string; // e.g. "2", "100 g", "1 cup"
+}
+
+/** A recipe in the planner library. Macros are per single serving. */
+export interface Recipe {
+  id: string;
+  name: string;
+  emoji: string;
+  /** Meal slots this recipe suits. */
+  mealTypes: MealType[];
+  /** Diet patterns this recipe satisfies (always include the ones it fits). */
+  diets: DietPattern[];
+  timeMin: number;
+  calories: number;
+  protein: number;
+  carbs: number;
+  fat: number;
+  ingredients: RecipeIngredient[];
+  steps: string[];
+}
+
+/** One slot in a generated day plan. */
+export interface PlannedMeal {
+  slot: MealType;
+  recipeId: string;
+  servings: number;
+}
+
+export interface DayPlan {
+  date: ISODateString;
+  meals: PlannedMeal[];
+}
+
 export interface AppData {
   meals: MealEntry[];
   exercises: ExerciseEntry[];
@@ -185,6 +220,8 @@ export interface AppData {
   customFoods: Food[];
   /** User-created or user-edited exercises; override bundled by id. */
   customExercises: ExerciseDef[];
+  /** The currently generated meal plan, if any. */
+  plan: DayPlan | null;
 }
 
 export const DEFAULT_PROFILE: Profile = {
@@ -212,4 +249,5 @@ export const emptyAppData: AppData = {
   favoriteFoodIds: [],
   customFoods: [],
   customExercises: [],
+  plan: null,
 };

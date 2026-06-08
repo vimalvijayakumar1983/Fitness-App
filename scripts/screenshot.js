@@ -149,6 +149,13 @@ async function typeInto(page, placeholder, value) {
   await sleep(800);
   await shot('6-dashboard-filled.png');
 
+  // 9. Plan — generate a meal plan
+  await clickByText(page, 'Plan');
+  await sleep(600);
+  await clickByText(page, '✨ Generate my plan');
+  await sleep(900);
+  await shot('9-plan.png');
+
   await browser.close();
   server.close();
   console.log('done');

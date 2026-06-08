@@ -8,6 +8,7 @@ import React, {
 } from 'react';
 import {
   AppData,
+  DayPlan,
   emptyAppData,
   ExerciseDef,
   ExerciseEntry,
@@ -39,6 +40,7 @@ interface DataContextValue {
   deleteCustomFood: (foodId: string) => void;
   upsertCustomExercise: (exercise: ExerciseDef) => void;
   deleteCustomExercise: (exerciseId: string) => void;
+  setPlan: (plan: DayPlan | null) => void;
 
   removeEntry: (
     kind: 'meals' | 'exercises' | 'moods' | 'sleep' | 'water',
@@ -179,6 +181,10 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     }));
   }, []);
 
+  const setPlan = useCallback((plan: DayPlan | null) => {
+    setData((prev) => ({ ...prev, plan }));
+  }, []);
+
   const removeEntry = useCallback(
     (kind: 'meals' | 'exercises' | 'moods' | 'sleep' | 'water', id: string) => {
       setData((prev) => ({
@@ -233,6 +239,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       deleteCustomFood,
       upsertCustomExercise,
       deleteCustomExercise,
+      setPlan,
       removeEntry,
       syncHealthData,
     }),
@@ -250,6 +257,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       deleteCustomFood,
       upsertCustomExercise,
       deleteCustomExercise,
+      setPlan,
       removeEntry,
       syncHealthData,
     ],
