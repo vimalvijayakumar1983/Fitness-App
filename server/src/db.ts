@@ -117,5 +117,74 @@ export function initSchema(): void {
     );
     CREATE INDEX IF NOT EXISTS idx_foods_name ON foods(name);
     CREATE INDEX IF NOT EXISTS idx_foods_barcode ON foods(barcode);
+
+    -- ── CMS: admin-managed content that the app merges over its bundled data ──
+    CREATE TABLE IF NOT EXISTS cms_foods (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      brand TEXT,
+      serving TEXT NOT NULL,
+      calories REAL NOT NULL,
+      protein REAL NOT NULL DEFAULT 0,
+      carbs REAL NOT NULL DEFAULT 0,
+      fat REAL NOT NULL DEFAULT 0,
+      category TEXT NOT NULL DEFAULT 'meal',
+      image_url TEXT,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS cms_exercises (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      category TEXT NOT NULL,
+      muscle TEXT NOT NULL,
+      equipment TEXT,
+      met REAL NOT NULL,
+      image_url TEXT,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS cms_recipes (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      emoji TEXT,
+      meal_types TEXT NOT NULL,    -- JSON array
+      diets TEXT NOT NULL,         -- JSON array
+      time_min INTEGER,
+      calories REAL NOT NULL,
+      protein REAL NOT NULL DEFAULT 0,
+      carbs REAL NOT NULL DEFAULT 0,
+      fat REAL NOT NULL DEFAULT 0,
+      ingredients TEXT NOT NULL,   -- JSON array of {name, quantity}
+      steps TEXT NOT NULL,         -- JSON array of strings
+      image_url TEXT,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    );
+
+    -- Customer classifications / segments (VIP, PCOS, Keto cut, Ramadan, …).
+    CREATE TABLE IF NOT EXISTS segments (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      color TEXT,
+      created_at TEXT NOT NULL
+    );
   `);
+}
+
+/**
+ * Idempotent column migrations for tables that predate newer columns.
+ * better-sqlite3 throws if a column already exists, so each is guarded.
+ */
+export function migrate(): void {
+  const add = (sql: string) => {
+    try {
+      db.exec(sql);
+    } catch {
+      /* column already exists */
+    }
+  };
+  add(`ALTER TABLE users ADD COLUMN role TEXT NOT NULL DEFAULT 'customer'`);
 }

@@ -1,14 +1,15 @@
 import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
-import { initSchema } from './db';
+import { initSchema, migrate } from './db';
 import { seedFoods } from './foods/seed';
-import { authRouter } from './auth';
+import { authRouter, seedAdmin } from './auth';
 import { logsRouter } from './routes/logs';
 import { goalsRouter } from './routes/goals';
 import { foodsRouter } from './routes/foods';
 import { analyticsRouter } from './routes/analytics';
 import { coachRouter } from './routes/coach';
+import { contentRouter } from './routes/content';
 
 const app = express();
 // Photos for food analysis can be a few hundred KB of base64.
@@ -21,14 +22,19 @@ app.get('/api/health', (_req, res) => {
 });
 
 app.use('/api/auth', authRouter);
-app.use('/api', logsRouter); // /api/meals, /api/exercises, /api/moods, /api/sleep, /api/weights, /api/water
+// Specific routers first, so the catch-all '/api' (auth-gated) logs router
+// doesn't intercept public content reads.
+app.use('/api/content', contentRouter);
 app.use('/api/goals', goalsRouter);
 app.use('/api/foods', foodsRouter);
 app.use('/api/analytics', analyticsRouter);
 app.use('/api/coach', coachRouter);
+app.use('/api', logsRouter); // /api/meals, /api/exercises, /api/moods, /api/sleep, /api/weights, /api/water
 
-// Initialize the database and seed the food table on boot.
+// Initialize the database, run migrations, seed foods and the admin account.
 initSchema();
+migrate();
+seedAdmin();
 const added = seedFoods();
 if (added > 0) console.log(`Seeded ${added} foods.`);
 
