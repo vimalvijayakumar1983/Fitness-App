@@ -1,10 +1,12 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Platform } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { AuthProvider } from '@/context/AuthContext';
-import { DataProvider } from '@/context/DataContext';
+import { DataProvider, useData } from '@/context/DataContext';
 import { RootNavigator } from '@/navigation/RootNavigator';
+import { OnboardingModal } from '@/components/OnboardingModal';
+import { PaywallModal } from '@/components/PaywallModal';
 
 // Load the Poppins web font so the UI matches the fresh, rounded brand look.
 if (Platform.OS === 'web' && typeof document !== 'undefined') {
@@ -14,6 +16,30 @@ if (Platform.OS === 'web' && typeof document !== 'undefined') {
   document.head.appendChild(link);
 }
 
+/** First-run funnel: onboarding quiz → paywall (skippable). */
+function StartupGate() {
+  const { data, loading, isPremium } = useData();
+  const [onbOpen, setOnbOpen] = useState(false);
+  const [paywallOpen, setPaywallOpen] = useState(false);
+
+  useEffect(() => {
+    if (!loading && !data.profile.onboarded) setOnbOpen(true);
+  }, [loading, data.profile.onboarded]);
+
+  return (
+    <>
+      <OnboardingModal
+        visible={onbOpen}
+        onDone={() => {
+          setOnbOpen(false);
+          if (!isPremium) setPaywallOpen(true);
+        }}
+      />
+      <PaywallModal visible={paywallOpen} onClose={() => setPaywallOpen(false)} />
+    </>
+  );
+}
+
 export default function App() {
   return (
     <SafeAreaProvider>
@@ -21,6 +47,7 @@ export default function App() {
         <DataProvider>
           <StatusBar style="dark" />
           <RootNavigator />
+          <StartupGate />
         </DataProvider>
       </AuthProvider>
     </SafeAreaProvider>

@@ -81,6 +81,13 @@ export interface AssignedPlan {
   assignedAt?: string;
 }
 
+export interface Subscription {
+  plan: 'free' | 'premium' | 'coached';
+  status: 'none' | 'trialing' | 'active' | 'canceled';
+  isPremium: boolean;
+  stripe?: boolean;
+}
+
 /** Best-effort fetch of admin content; returns empty sets on any failure. */
 export async function fetchCmsContent(): Promise<CmsContent> {
   const empty: CmsContent = { foods: [], exercises: [], recipes: [] };
@@ -138,6 +145,14 @@ export const api = {
 
   // Coach-assigned plan (read-only for the customer)
   getMyPlan: () => request<{ plan: AssignedPlan | null }>('/me/plan'),
+
+  // Billing / subscription
+  getSubscription: () => request<Subscription>('/billing/subscription'),
+  checkout: (tier: 'premium' | 'coached', interval: 'month' | 'year', currency: string) =>
+    request<{ url?: string | null; mock?: boolean; isPremium?: boolean }>('/billing/checkout', {
+      method: 'POST',
+      body: { tier, interval, currency },
+    }),
 
   // Food database
   searchFoods: (q: string) =>

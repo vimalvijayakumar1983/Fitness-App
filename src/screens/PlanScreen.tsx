@@ -8,6 +8,7 @@ import { Thumb } from '@/components/Thumb';
 import { GoalSetupModal } from '@/components/GoalSetupModal';
 import { RecipeLibraryModal } from '@/components/RecipeLibraryModal';
 import { RecipeDetailModal } from '@/components/RecipeDetailModal';
+import { PaywallModal } from '@/components/PaywallModal';
 import { useData } from '@/context/DataContext';
 import { colors, gradients, radius, spacing, type } from '@/theme/colors';
 import type { GoalType, MealType, Recipe } from '@/models/types';
@@ -27,11 +28,14 @@ const GOAL_CARDS: { goal: GoalType; emoji: string; blurb: string }[] = [
 ];
 
 export function PlanScreen() {
-  const { data, cms, assignedPlan, addMeal, updateProfile, setPlan } = useData();
+  const { data, cms, assignedPlan, isPremium, addMeal, updateProfile, setPlan } = useData();
   const [setupOpen, setSetupOpen] = useState(false);
   const [libraryOpen, setLibraryOpen] = useState(false);
   const [detail, setDetail] = useState<Recipe | null>(null);
   const [checked, setChecked] = useState<Set<string>>(new Set());
+  const [paywallOpen, setPaywallOpen] = useState(false);
+
+  const requirePremium = (fn: () => void) => (isPremium ? fn() : setPaywallOpen(true));
 
   const today = todayISO();
   const { profile, plan } = data;
@@ -62,7 +66,7 @@ export function PlanScreen() {
     const next = { ...profile, goal };
     const t = computeTargets(next);
     updateProfile({ goal, calorieTarget: t.calorieTarget, macroTargets: t.macroTargets });
-    setPlan(generatePlan({ ...next, ...t }, today, allRecipes));
+    requirePremium(() => setPlan(generatePlan({ ...next, ...t }, today, allRecipes)));
   };
 
   const toggleCheck = (name: string) =>
@@ -141,12 +145,12 @@ export function PlanScreen() {
       {/* Meal plan */}
       <Card
         title="Meal plan"
-        trailing={plan ? <Pressable onPress={() => setPlan(generatePlan(profile, today, allRecipes))}><Text style={styles.edit}>Regenerate</Text></Pressable> : undefined}
+        trailing={plan ? <Pressable onPress={() => requirePremium(() => setPlan(generatePlan(profile, today, allRecipes)))}><Text style={styles.edit}>Regenerate</Text></Pressable> : undefined}
       >
         {!plan ? (
           <>
-            <Text style={styles.hint}>Generate a day of meals matched to your {DIET_LABELS[profile.diet].toLowerCase()} target of {profile.calorieTarget} kcal.</Text>
-            <PrimaryButton label="✨ Generate my plan" onPress={() => setPlan(generatePlan(profile, today, allRecipes))} gradient={gradients.primary} style={{ marginTop: spacing.lg }} />
+            <Text style={styles.hint}>Generate a day of meals matched to your {DIET_LABELS[profile.diet].toLowerCase()} target of {profile.calorieTarget} kcal.{!isPremium ? '  ✨ Premium' : ''}</Text>
+            <PrimaryButton label={isPremium ? '✨ Generate my plan' : '🔒 Generate my plan (Premium)'} onPress={() => requirePremium(() => setPlan(generatePlan(profile, today, allRecipes)))} gradient={gradients.primary} style={{ marginTop: spacing.lg }} />
           </>
         ) : (
           <>
@@ -174,7 +178,7 @@ export function PlanScreen() {
             ) : null}
           </>
         )}
-        <PrimaryButton label="📖 Browse recipe library" onPress={() => setLibraryOpen(true)} variant="soft" color={colors.meal} style={{ marginTop: spacing.lg }} />
+        <PrimaryButton label={isPremium ? '📖 Browse recipe library' : '🔒 Recipe library (Premium)'} onPress={() => requirePremium(() => setLibraryOpen(true))} variant="soft" color={colors.meal} style={{ marginTop: spacing.lg }} />
       </Card>
 
       {/* Grocery list */}
@@ -198,6 +202,7 @@ export function PlanScreen() {
       <GoalSetupModal visible={setupOpen} profile={profile} onClose={() => setSetupOpen(false)} onSave={updateProfile} />
       <RecipeLibraryModal visible={libraryOpen} recipes={allRecipes} onClose={() => setLibraryOpen(false)} onLog={(r) => logRecipe(r)} />
       <RecipeDetailModal visible={!!detail} recipe={detail} onClose={() => setDetail(null)} onLog={(r) => logRecipe(r)} />
+      <PaywallModal visible={paywallOpen} onClose={() => setPaywallOpen(false)} />
     </ScreenContainer>
   );
 }

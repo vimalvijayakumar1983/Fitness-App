@@ -21,7 +21,7 @@ import {
 } from '@/models/types';
 import { loadAppData, saveAppData } from '@/services/storage';
 import { getHealthProvider } from '@/services/health/healthService';
-import { api, fetchCmsContent, CmsContent, AssignedPlan } from '@/services/api';
+import { api, fetchCmsContent, CmsContent, AssignedPlan, Subscription } from '@/services/api';
 import { useAuth } from '@/context/AuthContext';
 import { makeId, todayISO } from '@/utils/date';
 
@@ -34,6 +34,10 @@ interface DataContextValue {
   syncing: boolean;
   /** A plan the coach assigned to this customer from the back office, if any. */
   assignedPlan: AssignedPlan | null;
+  /** Subscription/entitlement for the signed-in user. */
+  subscription: Subscription | null;
+  isPremium: boolean;
+  refreshSubscription: () => void;
 
   addMeal: (meal: Omit<MealEntry, 'id' | 'loggedAt'>) => void;
   addExercise: (exercise: Omit<ExerciseEntry, 'id' | 'loggedAt'>) => void;
@@ -69,6 +73,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   const [cms, setCms] = useState<CmsContent>({ foods: [], exercises: [], recipes: [] });
   const [syncing, setSyncing] = useState(false);
   const [assignedPlan, setAssignedPlan] = useState<AssignedPlan | null>(null);
+  const [subscription, setSubscription] = useState<Subscription | null>(null);
   const skipPush = useRef(false);
   const pushTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -77,13 +82,23 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     fetchCmsContent().then(setCms).catch(() => {});
   }, []);
 
-  // Pull the coach-assigned plan when signed in.
+  const refreshSubscription = useCallback(() => {
+    if (!token) {
+      setSubscription(null);
+      return;
+    }
+    api.getSubscription().then(setSubscription).catch(() => {});
+  }, [token]);
+
+  // Pull the coach-assigned plan and subscription when signed in.
   useEffect(() => {
     if (!token) {
       setAssignedPlan(null);
+      setSubscription(null);
       return;
     }
     api.getMyPlan().then((r) => setAssignedPlan(r.plan)).catch(() => {});
+    api.getSubscription().then(setSubscription).catch(() => {});
   }, [token]);
 
   // On sign-in: pull the cloud copy of app-owned data (or seed it from local).
@@ -304,6 +319,9 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       cms,
       syncing,
       assignedPlan,
+      subscription,
+      isPremium: !!subscription?.isPremium,
+      refreshSubscription,
       addMeal,
       addExercise,
       addMood,
@@ -325,6 +343,8 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       cms,
       syncing,
       assignedPlan,
+      subscription,
+      refreshSubscription,
       addMeal,
       addExercise,
       addMood,

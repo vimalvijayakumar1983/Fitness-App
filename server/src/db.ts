@@ -198,6 +198,17 @@ export function initSchema(): void {
       template_id TEXT,
       assigned_at TEXT NOT NULL
     );
+
+    -- Subscription / entitlement per user (free / premium / coached).
+    CREATE TABLE IF NOT EXISTS subscriptions (
+      user_id TEXT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+      plan TEXT NOT NULL DEFAULT 'free',     -- free | premium | coached
+      status TEXT NOT NULL DEFAULT 'none',   -- none | trialing | active | canceled
+      provider TEXT,                          -- stripe | mock
+      stripe_customer_id TEXT,
+      current_period_end TEXT,
+      updated_at TEXT NOT NULL
+    );
   `);
 }
 

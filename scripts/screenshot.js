@@ -85,6 +85,9 @@ async function typeInto(page, placeholder, value) {
   await page.setViewport({ width: 400, height: 860, deviceScaleFactor: 2 });
   await page.goto(`http://localhost:${PORT}`, { waitUntil: 'networkidle0' });
   await sleep(2500);
+  // Dismiss the first-run onboarding quiz so the rest of the flow is reachable.
+  await clickByText(page, 'Skip');
+  await sleep(800);
 
   const shot = async (name) => {
     await sleep(700);

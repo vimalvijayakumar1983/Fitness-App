@@ -119,6 +119,8 @@ export interface Profile {
   sex: 'male' | 'female' | 'other';
   /** Activity multiplier for TDEE (1.2 sedentary .. 1.725 very active). */
   activityLevel: number;
+  /** Whether the user has finished the onboarding quiz. */
+  onboarded?: boolean;
 }
 
 /**
@@ -243,6 +245,7 @@ export const DEFAULT_PROFILE: Profile = {
   age: 30,
   sex: 'male',
   activityLevel: 1.45,
+  onboarded: false,
 };
 
 export const emptyAppData: AppData = {

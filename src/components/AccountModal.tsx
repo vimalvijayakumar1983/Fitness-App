@@ -3,6 +3,7 @@ import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { TextField } from './TextField';
 import { PrimaryButton } from './PrimaryButton';
+import { PaywallModal } from './PaywallModal';
 import { useAuth } from '@/context/AuthContext';
 import { useData } from '@/context/DataContext';
 import { apiEnabled } from '@/services/api';
@@ -16,7 +17,8 @@ interface Props {
 /** Sign up / log in, and show cloud-sync status for the signed-in user. */
 export function AccountModal({ visible, onClose }: Props) {
   const { user, login, register, logout } = useAuth();
-  const { syncing } = useData();
+  const { syncing, subscription, isPremium } = useData();
+  const [paywallOpen, setPaywallOpen] = useState(false);
   const [mode, setMode] = useState<'login' | 'register'>('login');
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -68,8 +70,23 @@ export function AccountModal({ visible, onClose }: Props) {
                     <Text style={styles.syncText}>{syncing ? 'Syncing…' : 'All changes synced to the cloud'}</Text>
                   </View>
                 </View>
+                {/* Subscription */}
+                <View style={[styles.card, { marginTop: spacing.md }]}>
+                  <Text style={styles.label}>Subscription</Text>
+                  <Text style={styles.email}>
+                    {subscription?.plan === 'coached' ? 'Coached' : subscription?.plan === 'premium' ? 'Premium' : 'Free'}
+                    {isPremium ? ' ✓' : ''}
+                  </Text>
+                  {!isPremium ? (
+                    <PrimaryButton label="✨ Go Premium" onPress={() => setPaywallOpen(true)} gradient={gradients.primary} style={{ marginTop: spacing.md }} />
+                  ) : (
+                    <Text style={styles.note}>Thanks for being a {subscription?.plan} member 💚</Text>
+                  )}
+                </View>
+
                 <Text style={styles.note}>Your meals, workouts, and plan sync across every device you sign in on.</Text>
                 <PrimaryButton label="Sign out" onPress={logout} variant="soft" color={colors.danger} style={{ marginTop: spacing.lg }} />
+                <PaywallModal visible={paywallOpen} onClose={() => setPaywallOpen(false)} />
               </>
             ) : (
               <>
