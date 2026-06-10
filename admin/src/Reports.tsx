@@ -34,9 +34,12 @@ function downloadCSV(filename: string, rows: (string | number)[][]) {
   a.click();
 }
 
+interface Cohorts { weeks: number; cohorts: { label: string; size: number; retention: number[] }[] }
+
 export function ReportsView() {
   const [days, setDays] = useState(30);
   const [s, setS] = useState<Stats | null>(null);
+  const [cohorts, setCohorts] = useState<Cohorts | null>(null);
   const [err, setErr] = useState('');
   const [loading, setLoading] = useState(true);
 
@@ -45,6 +48,7 @@ export function ReportsView() {
     api.stats<Stats>(d).then(setS).catch((e) => setErr(e.message)).finally(() => setLoading(false));
   };
   useEffect(() => { load(days); }, [days]);
+  useEffect(() => { api.cohorts<Cohorts>().then(setCohorts).catch(() => {}); }, []);
 
   const exportCustomers = async () => {
     const [cs, segs] = await Promise.all([
@@ -123,6 +127,32 @@ export function ReportsView() {
         <Bars title={`Signups · last ${s.days}d`} data={s.signups} color="#23a455" labelEvery={Math.ceil(s.days / 10)} fmtDay={fmtDay} />
         <Bars title={`New subscribers · last ${s.days}d`} data={s.newSubs} color="#f2784b" labelEvery={Math.ceil(s.days / 10)} fmtDay={fmtDay} />
       </div>
+
+      {cohorts && cohorts.cohorts.some((c) => c.size > 0) ? (
+        <div className="card section">
+          <h3>Cohort retention <span className="muted" style={{ fontWeight: 400, fontSize: 12 }}>· % of each signup week still active</span></h3>
+          <table className="cohort">
+            <thead>
+              <tr>
+                <th>Cohort</th><th>Users</th>
+                {Array.from({ length: cohorts.weeks }, (_, k) => <th key={k}>W{k}</th>)}
+              </tr>
+            </thead>
+            <tbody>
+              {cohorts.cohorts.map((c) => (
+                <tr key={c.label}>
+                  <td>{c.label}</td>
+                  <td>{c.size}</td>
+                  {Array.from({ length: cohorts.weeks }, (_, k) => {
+                    const v = c.retention[k];
+                    return <td key={k} className="cohort-cell" style={v == null ? undefined : { background: `rgba(35,164,85,${0.08 + (v / 100) * 0.72})`, color: v > 55 ? '#fff' : 'var(--text)' }}>{v == null ? '' : `${v}%`}</td>;
+                  })}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ) : null}
 
       <div className="two-col">
         <div className="card section">

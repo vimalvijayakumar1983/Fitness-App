@@ -67,13 +67,27 @@ adminRouter.get('/customers', (_req, res) => {
 adminRouter.get('/customers/:id', (req: Request, res: Response) => {
   const u = db.prepare('SELECT id, email, name, role, segment_id, created_at FROM users WHERE id = ?').get(req.params.id) as any;
   if (!u) return res.status(404).json({ error: 'Customer not found.' });
-  const sub = db.prepare('SELECT plan, status, current_period_end FROM subscriptions WHERE user_id = ?').get(req.params.id) as any;
+  const sub = db.prepare('SELECT plan, status, current_period_end, updated_at FROM subscriptions WHERE user_id = ?').get(req.params.id) as any;
   const state = db.prepare('SELECT updated_at FROM user_state WHERE user_id = ?').get(req.params.id) as any;
   const planRow = db.prepare('SELECT name, meals, assigned_at FROM customer_plans WHERE user_id = ?').get(req.params.id) as any;
+
+  // LTV estimate: months active × the plan's monthly price (USD).
+  let ltv = 0;
+  let monthsActive = 0;
+  const plan = sub?.plan ?? 'free';
+  if (plan === 'premium' || plan === 'coached') {
+    const start = Date.parse(sub.updated_at || u.created_at);
+    monthsActive = Math.max(1, Math.round((Date.now() - start) / (30 * 864e5)));
+    const pr = getPricing();
+    const monthly = (plan === 'coached' ? pr.coached.month.usd : pr.premium.month.usd) / 100;
+    ltv = Math.round(monthsActive * monthly);
+  }
+
   res.json({
     id: u.id, email: u.email, name: u.name, role: u.role,
     segmentId: u.segment_id ?? null, createdAt: u.created_at,
-    subscription: { plan: sub?.plan ?? 'free', status: sub?.status ?? 'none' },
+    subscription: { plan, status: sub?.status ?? 'none' },
+    ltv, monthsActive,
     lastActive: state?.updated_at ?? null,
     assignedPlan: planRow ? { name: planRow.name, meals: JSON.parse(planRow.meals), assignedAt: planRow.assigned_at } : null,
   });
@@ -257,6 +271,35 @@ adminRouter.get('/stats', (req: Request, res: Response) => {
     recent: recent.map((r) => ({ email: r.email, name: r.name, plan: r.plan, createdAt: r.created_at })),
     recentSubs: recentSubs.map((r) => ({ email: r.email, plan: r.plan, at: r.updated_at })),
   });
+});
+
+// ───────────────────── Cohort retention ─────────────────────
+adminRouter.get('/cohorts', (_req: Request, res: Response) => {
+  const N = 8; // weekly cohorts
+  const WEEK = 7 * 864e5;
+  const rows = db.prepare(
+    `SELECT u.created_at c, st.updated_at a FROM users u LEFT JOIN user_state st ON st.user_id = u.id`,
+  ).all() as { c: string; a: string | null }[];
+
+  const cohorts: { label: string; size: number; retention: number[] }[] = [];
+  for (let w = N; w >= 1; w--) {
+    const winStart = Date.now() - w * WEEK;
+    const winEnd = Date.now() - (w - 1) * WEEK;
+    const members = rows.filter((r) => {
+      const t = Date.parse(r.c);
+      return t >= winStart && t < winEnd;
+    });
+    const ageWeeks = w - 1; // elapsed full weeks since the cohort started
+    const retention: number[] = [];
+    for (let k = 0; k <= ageWeeks; k++) {
+      const cutoff = winStart + k * WEEK;
+      const retained = members.filter((m) => m.a && Date.parse(m.a) >= cutoff).length;
+      retention.push(members.length ? Math.round((retained / members.length) * 100) : 0);
+    }
+    const label = new Date(winStart).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+    cohorts.push({ label, size: members.length, retention });
+  }
+  res.json({ weeks: N, cohorts });
 });
 
 // ───────────────────── Customer-facing: my plan ─────────────────────
