@@ -1,6 +1,6 @@
 import 'dotenv/config';
 import express from 'express';
-import cors from 'cors';
+import cors, { CorsOptions } from 'cors';
 import { initSchema, migrate } from './db';
 import { seedFoods } from './foods/seed';
 import { authRouter, seedAdmin } from './auth';
@@ -23,10 +23,24 @@ app.post('/api/billing/webhook', express.raw({ type: 'application/json' }), bill
 // Photos for food analysis can be a few hundred KB of base64.
 app.use(express.json({ limit: '12mb' }));
 
-// CORS: open by default; in production set CORS_ORIGINS to a comma-separated
-// allowlist of your admin + app URLs.
-const corsOrigins = process.env.CORS_ORIGINS?.split(',').map((s) => s.trim()).filter(Boolean);
-app.use(cors(corsOrigins && corsOrigins.length ? { origin: corsOrigins } : undefined));
+// CORS: open by default. Set CORS_ORIGINS to a comma-separated allowlist of
+// your admin + app URLs. Entries may be exact origins (https://app.com) or
+// wildcards (*.vercel.app) which match any subdomain — handy for previews.
+const corsRules = process.env.CORS_ORIGINS?.split(',').map((s) => s.trim()).filter(Boolean);
+const corsOptions: CorsOptions | undefined =
+  corsRules && corsRules.length
+    ? {
+        origin(origin, cb) {
+          // Allow non-browser / same-origin requests (no Origin header).
+          if (!origin) return cb(null, true);
+          const ok = corsRules.some(
+            (rule) => rule === origin || (rule.startsWith('*.') && origin.endsWith(rule.slice(1))),
+          );
+          cb(null, ok);
+        },
+      }
+    : undefined;
+app.use(cors(corsOptions));
 
 // Health check.
 app.get('/api/health', (_req, res) => {
