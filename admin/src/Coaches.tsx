@@ -15,6 +15,7 @@ interface Coach {
   active: boolean;
 }
 interface Booking { id: string; status: string; note: string; createdAt: string; email: string; userName: string | null; coachName: string }
+interface Message { id: string; sender: string; body: string; createdAt: string }
 
 const blank: Coach = {
   id: '', name: '', title: '', specialties: [], bio: '', photoUrl: '',
@@ -26,6 +27,7 @@ export function CoachesView() {
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [editing, setEditing] = useState<Coach | undefined>(undefined);
   const [showBookings, setShowBookings] = useState(false);
+  const [thread, setThread] = useState<Booking | null>(null);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState('');
 
@@ -56,7 +58,7 @@ export function CoachesView() {
           <h4 style={{ marginTop: 0 }}>Coaching requests & relationships</h4>
           {bookings.length === 0 ? <p className="muted">No bookings yet.</p> : (
             <table>
-              <thead><tr><th>Member</th><th>Coach</th><th>Status</th><th>Note</th><th>When</th></tr></thead>
+              <thead><tr><th>Member</th><th>Coach</th><th>Status</th><th>Note</th><th>When</th><th></th></tr></thead>
               <tbody>
                 {bookings.map((b) => (
                   <tr key={b.id}>
@@ -65,6 +67,7 @@ export function CoachesView() {
                     <td><span className="badge">{b.status}</span></td>
                     <td className="muted small">{b.note || '—'}</td>
                     <td className="muted small">{new Date(b.createdAt).toLocaleDateString()}</td>
+                    <td className="row-actions"><button className="link" onClick={() => setThread(b)}>Messages</button></td>
                   </tr>
                 ))}
               </tbody>
@@ -99,6 +102,47 @@ export function CoachesView() {
       {editing !== undefined ? (
         <CoachEditor initial={editing} onClose={() => setEditing(undefined)} onSaved={() => { setEditing(undefined); load(); }} />
       ) : null}
+      {thread ? <ThreadModal booking={thread} onClose={() => setThread(null)} /> : null}
+    </div>
+  );
+}
+
+function ThreadModal({ booking, onClose }: { booking: Booking; onClose: () => void }) {
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [body, setBody] = useState('');
+  const [busy, setBusy] = useState(false);
+
+  const load = async () => { try { setMessages(await api.bookingMessages<Message>(booking.id)); } catch { /* */ } };
+  useEffect(() => { load(); }, []);
+
+  const send = async () => {
+    if (!body.trim()) return;
+    setBusy(true);
+    try { await api.sendBookingMessage<Message>(booking.id, body.trim()); setBody(''); await load(); }
+    finally { setBusy(false); }
+  };
+
+  return (
+    <div className="modal-backdrop" onClick={onClose}>
+      <div className="modal card" onClick={(e) => e.stopPropagation()}>
+        <h3>{booking.coachName} ↔ {booking.userName || booking.email}</h3>
+        <div style={{ maxHeight: 360, overflow: 'auto', display: 'flex', flexDirection: 'column', gap: 8, padding: '4px 0 12px' }}>
+          {messages.length === 0 ? <p className="muted">No messages yet. Reply to start the conversation — it activates the booking.</p> : null}
+          {messages.map((m) => (
+            <div key={m.id} style={{
+              alignSelf: m.sender === 'coach' ? 'flex-end' : 'flex-start',
+              background: m.sender === 'coach' ? 'var(--primary)' : '#eef2ea',
+              color: m.sender === 'coach' ? '#fff' : 'var(--text)',
+              borderRadius: 12, padding: '8px 12px', maxWidth: '80%', fontSize: 14,
+            }}>{m.body}</div>
+          ))}
+        </div>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <input placeholder="Reply as coach…" value={body} onChange={(e) => setBody(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && send()} />
+          <button onClick={send} disabled={busy || !body.trim()}>Send</button>
+        </div>
+        <div className="modal-actions"><button className="ghost" onClick={onClose}>Close</button></div>
+      </div>
     </div>
   );
 }

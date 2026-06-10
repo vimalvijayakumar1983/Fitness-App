@@ -199,7 +199,7 @@ adminRouter.get('/stats', (req: Request, res: Response) => {
   const prevRange = one('SELECT COUNT(*) n FROM users WHERE created_at >= ? AND created_at < ?', dayAgo(days * 2), dayAgo(days));
   const growthPct = prevRange ? Math.round(((newInRange - prevRange) / prevRange) * 100) : newInRange ? 100 : 0;
 
-  const active = "status IN ('active','trialing')";
+  const active = "status IN ('active','trialing','canceling')";
   const premium = one(`SELECT COUNT(*) n FROM subscriptions WHERE plan='premium' AND ${active}`);
   const coached = one(`SELECT COUNT(*) n FROM subscriptions WHERE plan='coached' AND ${active}`);
   const paying = premium + coached;
@@ -313,7 +313,7 @@ adminRouter.get('/revenue', (_req: Request, res: Response) => {
   const subs = db.prepare('SELECT plan, status, updated_at FROM subscriptions').all() as
     { plan: string; status: string; updated_at: string }[];
   const isActive = (s: { plan: string; status: string }) =>
-    (s.plan === 'premium' || s.plan === 'coached') && (s.status === 'active' || s.status === 'trialing');
+    (s.plan === 'premium' || s.plan === 'coached') && (s.status === 'active' || s.status === 'trialing' || s.status === 'canceling');
 
   const active = subs.filter(isActive);
   const premium = active.filter((s) => s.plan === 'premium').length;

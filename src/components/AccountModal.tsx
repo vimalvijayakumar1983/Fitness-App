@@ -6,8 +6,9 @@ import { PrimaryButton } from './PrimaryButton';
 import { PaywallModal } from './PaywallModal';
 import { useAuth } from '@/context/AuthContext';
 import { useData } from '@/context/DataContext';
-import { apiEnabled } from '@/services/api';
+import { api, apiEnabled } from '@/services/api';
 import { colors, gradients, radius, spacing, type } from '@/theme/colors';
+import { Linking, Platform } from 'react-native';
 
 interface Props {
   visible: boolean;
@@ -17,12 +18,14 @@ interface Props {
 /** Sign up / log in, and show cloud-sync status for the signed-in user. */
 export function AccountModal({ visible, onClose }: Props) {
   const { user, login, register, logout } = useAuth();
-  const { syncing, subscription, isPremium } = useData();
+  const { syncing, subscription, isPremium, refreshSubscription } = useData();
   const [paywallOpen, setPaywallOpen] = useState(false);
-  const [mode, setMode] = useState<'login' | 'register'>('login');
+  const [mode, setMode] = useState<'login' | 'register' | 'forgot' | 'reset'>('login');
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [code, setCode] = useState('');
+  const [info, setInfo] = useState('');
   const [err, setErr] = useState('');
   const [busy, setBusy] = useState(false);
 
@@ -38,6 +41,44 @@ export function AccountModal({ visible, onClose }: Props) {
     } finally {
       setBusy(false);
     }
+  };
+
+  const sendResetCode = async () => {
+    setErr(''); setInfo(''); setBusy(true);
+    try {
+      await api.forgotPassword(email.trim());
+      setInfo('If that email has an account, a 6-digit code is on its way. Enter it below.');
+      setMode('reset');
+    } catch (e: any) {
+      setErr(e.message || 'Could not send code.');
+    } finally { setBusy(false); }
+  };
+
+  const doReset = async () => {
+    setErr(''); setBusy(true);
+    try {
+      await api.resetPassword(email.trim(), code.trim(), password);
+      // Token is stored; load the account.
+      await login(email.trim(), password).catch(() => {});
+      setCode(''); setPassword(''); setInfo(''); setMode('login');
+    } catch (e: any) {
+      setErr(e.message || 'Could not reset password.');
+    } finally { setBusy(false); }
+  };
+
+  const cancelSub = async () => {
+    setBusy(true);
+    try { await api.cancelSubscription(); refreshSubscription(); } finally { setBusy(false); }
+  };
+  const reactivateSub = async () => {
+    setBusy(true);
+    try { await api.reactivateSubscription(); refreshSubscription(); } finally { setBusy(false); }
+  };
+  const manageBilling = async () => {
+    try {
+      const r = await api.billingPortal();
+      if (r.url) { if (Platform.OS === 'web') window.open(r.url, '_blank'); else Linking.openURL(r.url); }
+    } catch { /* portal only in Stripe mode */ }
   };
 
   return (
@@ -77,16 +118,50 @@ export function AccountModal({ visible, onClose }: Props) {
                     {subscription?.plan === 'coached' ? 'Coached' : subscription?.plan === 'premium' ? 'Premium' : 'Free'}
                     {isPremium ? ' ✓' : ''}
                   </Text>
+                  {subscription?.status === 'canceling' ? (
+                    <Text style={[styles.note, { color: colors.warning }]}>
+                      Cancels{subscription.currentPeriodEnd ? ` on ${new Date(subscription.currentPeriodEnd).toLocaleDateString()}` : ' at period end'} — access continues until then.
+                    </Text>
+                  ) : null}
                   {!isPremium ? (
                     <PrimaryButton label="✨ Go Premium" onPress={() => setPaywallOpen(true)} gradient={gradients.primary} style={{ marginTop: spacing.md }} />
                   ) : (
-                    <Text style={styles.note}>Thanks for being a {subscription?.plan} member 💚</Text>
+                    <>
+                      <Text style={styles.note}>Thanks for being a {subscription?.plan} member 💚</Text>
+                      <View style={styles.subActions}>
+                        {subscription?.status === 'canceling' ? (
+                          <PrimaryButton label="Resume plan" onPress={reactivateSub} variant="soft" color={colors.primary} loading={busy} style={{ flex: 1 }} />
+                        ) : (
+                          <PrimaryButton label="Cancel plan" onPress={cancelSub} variant="soft" color={colors.danger} loading={busy} style={{ flex: 1 }} />
+                        )}
+                        {subscription?.stripe ? (
+                          <PrimaryButton label="Manage billing" onPress={manageBilling} variant="soft" color={colors.textSecondary} style={{ flex: 1 }} />
+                        ) : null}
+                      </View>
+                    </>
                   )}
                 </View>
 
                 <Text style={styles.note}>Your meals, workouts, and plan sync across every device you sign in on.</Text>
                 <PrimaryButton label="Sign out" onPress={logout} variant="soft" color={colors.danger} style={{ marginTop: spacing.lg }} />
                 <PaywallModal visible={paywallOpen} onClose={() => setPaywallOpen(false)} />
+              </>
+            ) : mode === 'forgot' ? (
+              <>
+                <Text style={styles.note}>Enter your email and we'll send a 6-digit reset code.</Text>
+                <TextField label="Email" placeholder="you@email.com" autoCapitalize="none" keyboardType="email-address" value={email} onChangeText={setEmail} />
+                {err ? <Text style={styles.err}>{err}</Text> : null}
+                <PrimaryButton label={busy ? 'Sending…' : 'Send reset code'} onPress={sendResetCode} gradient={gradients.primary} disabled={busy || !email || !apiEnabled} style={{ marginTop: spacing.sm }} />
+                <Pressable onPress={() => { setErr(''); setMode('login'); }} style={styles.switch}><Text style={styles.switchText}>Back to log in</Text></Pressable>
+              </>
+            ) : mode === 'reset' ? (
+              <>
+                {info ? <Text style={[styles.note, { color: colors.primaryDark }]}>{info}</Text> : null}
+                <TextField label="Reset code" placeholder="123456" keyboardType="number-pad" value={code} onChangeText={setCode} />
+                <TextField label="New password" placeholder="••••••••" secureTextEntry value={password} onChangeText={setPassword} />
+                {err ? <Text style={styles.err}>{err}</Text> : null}
+                <PrimaryButton label={busy ? 'Resetting…' : 'Set new password'} onPress={doReset} gradient={gradients.primary} disabled={busy || code.length < 6 || password.length < 6} style={{ marginTop: spacing.sm }} />
+                <Pressable onPress={() => { setErr(''); setMode('forgot'); }} style={styles.switch}><Text style={styles.switchText}>Resend code</Text></Pressable>
               </>
             ) : (
               <>
@@ -103,6 +178,11 @@ export function AccountModal({ visible, onClose }: Props) {
                   disabled={busy || !email || password.length < 6 || !apiEnabled}
                   style={{ marginTop: spacing.sm }}
                 />
+                {mode === 'login' ? (
+                  <Pressable onPress={() => { setErr(''); setInfo(''); setMode('forgot'); }} style={styles.switch}>
+                    <Text style={styles.switchText}>Forgot password?</Text>
+                  </Pressable>
+                ) : null}
                 <Pressable onPress={() => { setErr(''); setMode(mode === 'login' ? 'register' : 'login'); }} style={styles.switch}>
                   <Text style={styles.switchText}>
                     {mode === 'login' ? "New here? Create an account" : 'Already have an account? Log in'}
@@ -134,6 +214,7 @@ const styles = StyleSheet.create({
   dot: { width: 9, height: 9, borderRadius: 5, marginRight: spacing.sm },
   syncText: { ...type.caption, color: colors.textSecondary },
   note: { ...type.caption, marginTop: spacing.lg, lineHeight: 19 },
+  subActions: { flexDirection: 'row', gap: spacing.sm, marginTop: spacing.md },
   err: { ...type.caption, color: colors.danger, marginVertical: spacing.sm },
   switch: { alignItems: 'center', marginTop: spacing.lg },
   switchText: { ...type.body, color: colors.primary, fontWeight: '600' },

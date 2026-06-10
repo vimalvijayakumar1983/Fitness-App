@@ -144,6 +144,15 @@ export function DashboardScreen() {
 
   const calBalance = s.caloriesIn - s.caloriesOut;
 
+  // Smart nudges — a lightweight daily engagement loop computed from local data.
+  const nudges: { label: string; emoji: string; onPress: () => void }[] = [];
+  if (!data.assessment) nudges.push({ emoji: '📋', label: 'Complete your health assessment', onPress: () => setAssessmentOpen(true) });
+  if (!data.glucose.some((g) => g.date === today)) nudges.push({ emoji: '🩸', label: 'Log a glucose reading', onPress: () => setGlucoseOpen(true) });
+  const lastWeighDays = data.weights[0] ? (Date.now() - Date.parse(data.weights[0].loggedAt)) / 864e5 : 999;
+  if (lastWeighDays >= 7) nudges.push({ emoji: '⚖️', label: 'Weigh in to track your trend', onPress: () => setWeightOpen(true) });
+  if (data.family.length === 0) nudges.push({ emoji: '👨‍👩‍👧', label: 'Add a family member to track', onPress: () => setFamilyOpen(true) });
+  const topNudges = nudges.slice(0, 3);
+
   return (
     <ScreenContainer
       title={greeting()}
@@ -182,6 +191,19 @@ export function DashboardScreen() {
           <Subscore label="Mind" value={readiness.mind} color={colors.mind} />
         </View>
       </LinearGradient>
+
+      {/* Smart nudges — today's focus */}
+      {topNudges.length > 0 ? (
+        <Card title="Today's focus">
+          {topNudges.map((n, i) => (
+            <Pressable key={i} onPress={n.onPress} style={[styles.nudgeRow, i > 0 && styles.nudgeBorder]}>
+              <Text style={styles.nudgeEmoji}>{n.emoji}</Text>
+              <Text style={styles.nudgeLabel}>{n.label}</Text>
+              <Text style={styles.nudgeArrow}>›</Text>
+            </Pressable>
+          ))}
+        </Card>
+      ) : null}
 
       {/* Activity rings */}
       <Card title="Activity rings">
@@ -477,6 +499,12 @@ const styles = StyleSheet.create({
   tileScore: { ...type.metric, marginTop: spacing.sm },
   tileUnit: { ...type.body, color: colors.textSecondary },
   tileSub: { ...type.caption, marginTop: 2 },
+
+  nudgeRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: spacing.md },
+  nudgeBorder: { borderTopWidth: 1, borderTopColor: colors.border },
+  nudgeEmoji: { fontSize: 20, marginRight: spacing.md },
+  nudgeLabel: { ...type.body, flex: 1, fontWeight: '600' },
+  nudgeArrow: { fontSize: 22, color: colors.textMuted },
 
   longevityCard: { flexDirection: 'row', alignItems: 'center', borderRadius: radius.xl, padding: spacing.xl, marginBottom: spacing.md },
   longevityLabel: { ...type.label, color: 'rgba(255,255,255,0.85)' },

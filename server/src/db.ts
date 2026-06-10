@@ -278,6 +278,23 @@ export function initSchema(): void {
     );
     CREATE INDEX IF NOT EXISTS idx_booking_user ON coach_bookings(user_id);
 
+    -- Coach ↔ customer messages within a booking.
+    CREATE TABLE IF NOT EXISTS coach_messages (
+      id TEXT PRIMARY KEY,
+      booking_id TEXT NOT NULL REFERENCES coach_bookings(id) ON DELETE CASCADE,
+      sender TEXT NOT NULL,          -- customer | coach
+      body TEXT NOT NULL,
+      created_at TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_msg_booking ON coach_messages(booking_id);
+
+    -- Password-reset codes (hashed), short-lived.
+    CREATE TABLE IF NOT EXISTS password_resets (
+      user_id TEXT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+      code_hash TEXT NOT NULL,
+      expires_at TEXT NOT NULL
+    );
+
     -- ── Phase 2: Corporate wellness (B2B orgs whose employees are members) ──
     CREATE TABLE IF NOT EXISTS companies (
       id TEXT PRIMARY KEY,
@@ -307,4 +324,5 @@ export function migrate(): void {
   add(`ALTER TABLE users ADD COLUMN role TEXT NOT NULL DEFAULT 'customer'`);
   add(`ALTER TABLE users ADD COLUMN segment_id TEXT`);
   add(`ALTER TABLE users ADD COLUMN company_id TEXT`);
+  add(`ALTER TABLE subscriptions ADD COLUMN stripe_subscription_id TEXT`);
 }

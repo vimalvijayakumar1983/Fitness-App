@@ -185,6 +185,27 @@ coachesRouter.delete('/booking/:id', requireAuth, (req: AuthedRequest, res: Resp
   res.json({ ok: true });
 });
 
+const mapMessage = (r: any) => ({ id: r.id, sender: r.sender, body: r.body, createdAt: r.created_at });
+
+// Messages within a booking (customer side).
+coachesRouter.get('/booking/:id/messages', requireAuth, (req: AuthedRequest, res: Response) => {
+  const owns = db.prepare('SELECT id FROM coach_bookings WHERE id = ? AND user_id = ?').get(req.params.id, req.userId);
+  if (!owns) return res.status(404).json({ error: 'Booking not found.' });
+  const rows = db.prepare('SELECT * FROM coach_messages WHERE booking_id = ? ORDER BY created_at').all(req.params.id);
+  res.json(rows.map(mapMessage));
+});
+
+coachesRouter.post('/booking/:id/messages', requireAuth, (req: AuthedRequest, res: Response) => {
+  const owns = db.prepare('SELECT id FROM coach_bookings WHERE id = ? AND user_id = ?').get(req.params.id, req.userId);
+  if (!owns) return res.status(404).json({ error: 'Booking not found.' });
+  const body = String(req.body?.body ?? '').trim().slice(0, 4000);
+  if (!body) return res.status(400).json({ error: 'Message is empty.' });
+  const id = `msg_${makeId()}`;
+  db.prepare('INSERT INTO coach_messages (id, booking_id, sender, body, created_at) VALUES (?, ?, ?, ?, ?)')
+    .run(id, req.params.id, 'customer', body, now());
+  res.status(201).json(mapMessage(db.prepare('SELECT * FROM coach_messages WHERE id = ?').get(id)));
+});
+
 coachesRouter.get('/:id', (req, res) => {
   const row = db.prepare('SELECT * FROM coaches WHERE id = ?').get(req.params.id);
   if (!row) return res.status(404).json({ error: 'Coach not found.' });
@@ -375,6 +396,25 @@ adminPhase2Router.get('/coach-bookings', (_req, res) => {
     id: r.id, status: r.status, note: r.note ?? '', createdAt: r.created_at,
     email: r.email, userName: r.user_name, coachName: r.coach_name,
   })));
+});
+
+// Coach messaging (admin replies on behalf of the coach).
+adminPhase2Router.get('/coach-bookings/:id/messages', (req: Request, res: Response) => {
+  const rows = db.prepare('SELECT * FROM coach_messages WHERE booking_id = ? ORDER BY created_at').all(req.params.id) as any[];
+  res.json(rows.map((r) => ({ id: r.id, sender: r.sender, body: r.body, createdAt: r.created_at })));
+});
+
+adminPhase2Router.post('/coach-bookings/:id/messages', (req: Request, res: Response) => {
+  const booking = db.prepare('SELECT id FROM coach_bookings WHERE id = ?').get(req.params.id);
+  if (!booking) return res.status(404).json({ error: 'Booking not found.' });
+  const body = String(req.body?.body ?? '').trim().slice(0, 4000);
+  if (!body) return res.status(400).json({ error: 'Message is empty.' });
+  // Replying activates the relationship.
+  db.prepare("UPDATE coach_bookings SET status='active', updated_at=? WHERE id=? AND status='requested'").run(now(), req.params.id);
+  const id = `msg_${makeId()}`;
+  db.prepare('INSERT INTO coach_messages (id, booking_id, sender, body, created_at) VALUES (?, ?, ?, ?, ?)')
+    .run(id, req.params.id, 'coach', body, now());
+  res.status(201).json({ id, sender: 'coach', body, createdAt: now() });
 });
 
 // ── Companies CRUD ──

@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
-import { Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import React, { useEffect, useRef, useState } from 'react';
+import { ActivityIndicator, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { PrimaryButton } from './PrimaryButton';
 import { IconBadge } from './IconBadge';
+import { api, CoachMessage } from '@/services/api';
 import { colors, gradients, radius, spacing, type } from '@/theme/colors';
 import type { Coach, CoachBooking } from '@/models/types';
 
@@ -23,10 +24,38 @@ const initials = (name: string) => name.split(' ').map((w) => w[0]).slice(0, 2).
 export function CoachingModal({ visible, coaches, booking, hasAccount, busy, onBook, onEnd, onClose }: Props) {
   const [selected, setSelected] = useState<Coach | null>(null);
   const [note, setNote] = useState('');
+  const [threadOpen, setThreadOpen] = useState(false);
+  const [messages, setMessages] = useState<CoachMessage[]>([]);
+  const [msgInput, setMsgInput] = useState('');
+  const [loadingThread, setLoadingThread] = useState(false);
+  const scrollRef = useRef<ScrollView>(null);
 
   const bookedCoach = booking ? coaches.find((c) => c.id === booking.coachId) : null;
 
-  const close = () => { setSelected(null); setNote(''); onClose(); };
+  const loadMessages = async () => {
+    if (!booking) return;
+    setLoadingThread(true);
+    try { setMessages(await api.coachMessages(booking.id)); } catch { /* offline */ } finally { setLoadingThread(false); }
+  };
+
+  useEffect(() => {
+    if (threadOpen) { loadMessages(); }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [threadOpen]);
+
+  useEffect(() => {
+    if (threadOpen) setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 80);
+  }, [messages, threadOpen]);
+
+  const sendMessage = async () => {
+    const body = msgInput.trim();
+    if (!body || !booking) return;
+    setMsgInput('');
+    setMessages((m) => [...m, { id: `tmp_${Date.now()}`, sender: 'customer', body, createdAt: new Date().toISOString() }]);
+    try { await api.sendCoachMessage(booking.id, body); loadMessages(); } catch { /* offline */ }
+  };
+
+  const close = () => { setSelected(null); setNote(''); setThreadOpen(false); onClose(); };
 
   return (
     <Modal visible={visible} animationType="slide" onRequestClose={close}>
@@ -35,13 +64,32 @@ export function CoachingModal({ visible, coaches, booking, hasAccount, busy, onB
           <View style={styles.header}>
             <View style={{ flex: 1 }}>
               <Text style={styles.eyebrow}>Coaching</Text>
-              <Text style={type.title}>{selected ? selected.name : 'Find your coach'}</Text>
+              <Text style={type.title}>{threadOpen ? bookedCoach?.name ?? 'Messages' : selected ? selected.name : 'Find your coach'}</Text>
             </View>
-            <Pressable onPress={selected ? () => setSelected(null) : close} hitSlop={10} style={styles.closeBtn}>
-              <Text style={styles.closeText}>{selected ? '‹' : '✕'}</Text>
+            <Pressable onPress={threadOpen ? () => setThreadOpen(false) : selected ? () => setSelected(null) : close} hitSlop={10} style={styles.closeBtn}>
+              <Text style={styles.closeText}>{threadOpen || selected ? '‹' : '✕'}</Text>
             </Pressable>
           </View>
 
+          {threadOpen && booking ? (
+            <View style={{ flex: 1 }}>
+              <ScrollView ref={scrollRef} contentContainerStyle={styles.thread} showsVerticalScrollIndicator={false}>
+                {loadingThread ? <ActivityIndicator color={colors.primary} style={{ marginTop: spacing.xl }} /> : null}
+                {!loadingThread && messages.length === 0 ? (
+                  <Text style={styles.threadHint}>Say hello to {bookedCoach?.name?.split(' ')[0] ?? 'your coach'} 👋 Share your goals and they'll reply here.</Text>
+                ) : null}
+                {messages.map((m) => (
+                  <View key={m.id} style={[styles.msgBubble, m.sender === 'customer' ? styles.msgMine : styles.msgTheirs]}>
+                    <Text style={[styles.msgText, m.sender === 'customer' && { color: '#fff' }]}>{m.body}</Text>
+                  </View>
+                ))}
+              </ScrollView>
+              <View style={styles.composer}>
+                <TextInput style={styles.composerInput} placeholder="Message your coach…" placeholderTextColor={colors.textMuted} value={msgInput} onChangeText={setMsgInput} onSubmitEditing={sendMessage} returnKeyType="send" />
+                <Pressable style={[styles.sendBtn, !msgInput.trim() && { opacity: 0.4 }]} onPress={sendMessage} disabled={!msgInput.trim()}><Text style={styles.sendText}>➤</Text></Pressable>
+              </View>
+            </View>
+          ) : (
           <ScrollView contentContainerStyle={styles.body} showsVerticalScrollIndicator={false}>
             {/* Detail / booking view */}
             {selected ? (
@@ -83,13 +131,16 @@ export function CoachingModal({ visible, coaches, booking, hasAccount, busy, onB
               <>
                 {/* Current coach banner */}
                 {bookedCoach ? (
-                  <View style={styles.activeCard}>
-                    <IconBadge emoji={initials(bookedCoach.name)} colors={gradients.primary} size={48} />
-                    <View style={{ flex: 1, marginLeft: spacing.md }}>
-                      <Text style={styles.activeName}>{bookedCoach.name}</Text>
-                      <Text style={styles.activeStatus}>{booking?.status === 'requested' ? 'Request sent — your coach will reach out' : 'Your coach'}</Text>
+                  <View style={styles.activeWrap}>
+                    <View style={styles.activeCard}>
+                      <IconBadge emoji={initials(bookedCoach.name)} colors={gradients.primary} size={48} />
+                      <View style={{ flex: 1, marginLeft: spacing.md }}>
+                        <Text style={styles.activeName}>{bookedCoach.name}</Text>
+                        <Text style={styles.activeStatus}>{booking?.status === 'requested' ? 'Request sent — your coach will reach out' : 'Your coach'}</Text>
+                      </View>
+                      <Pressable onPress={() => booking && onEnd(booking)} hitSlop={8}><Text style={styles.endText}>End</Text></Pressable>
                     </View>
-                    <Pressable onPress={() => booking && onEnd(booking)} hitSlop={8}><Text style={styles.endText}>End</Text></Pressable>
+                    <PrimaryButton label="💬 Message your coach" onPress={() => setThreadOpen(true)} gradient={gradients.primary} style={{ marginBottom: spacing.lg }} />
                   </View>
                 ) : (
                   <Text style={styles.intro}>Work 1:1 with a vetted specialist — endocrinologists, dietitians and coaches who tailor your plan and keep you accountable.</Text>
@@ -109,6 +160,7 @@ export function CoachingModal({ visible, coaches, booking, hasAccount, busy, onB
               </>
             )}
           </ScrollView>
+          )}
         </SafeAreaView>
       </View>
     </Modal>
@@ -124,7 +176,18 @@ const styles = StyleSheet.create({
   closeText: { color: colors.textSecondary, fontSize: 18, fontWeight: '700' },
   body: { padding: spacing.lg, paddingTop: 0, paddingBottom: spacing.xxl },
   intro: { ...type.body, color: colors.textSecondary, lineHeight: 21, marginBottom: spacing.lg },
-  activeCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.primarySoft, borderRadius: radius.lg, padding: spacing.md, marginBottom: spacing.lg },
+  activeWrap: {},
+  activeCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.primarySoft, borderRadius: radius.lg, padding: spacing.md, marginBottom: spacing.md },
+  thread: { padding: spacing.lg, gap: spacing.sm },
+  threadHint: { ...type.caption, textAlign: 'center', marginTop: spacing.xl, lineHeight: 19 },
+  msgBubble: { maxWidth: '82%', borderRadius: radius.lg, paddingVertical: spacing.sm, paddingHorizontal: spacing.md },
+  msgMine: { alignSelf: 'flex-end', backgroundColor: colors.primary },
+  msgTheirs: { alignSelf: 'flex-start', backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border },
+  msgText: { ...type.body, lineHeight: 20 },
+  composer: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingHorizontal: spacing.lg, paddingVertical: spacing.md, borderTopWidth: 1, borderTopColor: colors.border },
+  composerInput: { flex: 1, backgroundColor: colors.backgroundAlt, borderRadius: radius.pill, paddingHorizontal: spacing.lg, paddingVertical: 11, color: colors.text, ...type.body },
+  sendBtn: { width: 44, height: 44, borderRadius: 22, backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center' },
+  sendText: { color: '#fff', fontSize: 18 },
   activeName: { ...type.body, fontWeight: '700' },
   activeStatus: { ...type.caption, color: colors.primaryDark, marginTop: 1 },
   endText: { ...type.caption, color: colors.danger, fontWeight: '700' },

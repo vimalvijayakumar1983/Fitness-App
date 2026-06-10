@@ -93,9 +93,18 @@ export interface AssignedPlan {
 
 export interface Subscription {
   plan: 'free' | 'premium' | 'coached';
-  status: 'none' | 'trialing' | 'active' | 'canceled';
+  status: 'none' | 'trialing' | 'active' | 'canceled' | 'canceling';
   isPremium: boolean;
   stripe?: boolean;
+  currentPeriodEnd?: string | null;
+  cancelAtPeriodEnd?: boolean;
+}
+
+export interface CoachMessage {
+  id: string;
+  sender: 'customer' | 'coach';
+  body: string;
+  createdAt: string;
 }
 
 /** Pricing in minor units per tier → interval → currency. */
@@ -153,6 +162,13 @@ export const api = {
   },
   logout: () => setToken(null),
   me: () => request<{ user: { id: string; email: string; name: string | null; role: string } }>('/auth/me'),
+  forgotPassword: (email: string) =>
+    request<{ ok: boolean }>('/auth/forgot', { method: 'POST', body: { email }, auth: false }),
+  resetPassword: async (email: string, code: string, password: string) => {
+    const r = await request<{ token: string }>('/auth/reset', { method: 'POST', body: { email, code, password }, auth: false });
+    await setToken(r.token);
+    return r;
+  },
 
   // Cloud sync (app-owned data blob)
   getSync: () => request<{ data: unknown | null; updatedAt: string | null }>('/sync'),
@@ -176,6 +192,9 @@ export const api = {
       method: 'POST',
       body: { tier, interval, currency },
     }),
+  cancelSubscription: () => request<Subscription>('/billing/cancel', { method: 'POST' }),
+  reactivateSubscription: () => request<Subscription>('/billing/reactivate', { method: 'POST' }),
+  billingPortal: () => request<{ url?: string | null; mock?: boolean }>('/billing/portal', { method: 'POST' }),
 
   // Food database
   searchFoods: (q: string) =>
@@ -225,6 +244,10 @@ export const api = {
     request<CoachBooking>(`/coaches/${coachId}/book`, { method: 'POST', body: { note } }),
   endCoaching: (bookingId: string) =>
     request<{ ok: boolean }>(`/coaches/booking/${bookingId}`, { method: 'DELETE' }),
+  coachMessages: (bookingId: string) =>
+    request<CoachMessage[]>(`/coaches/booking/${bookingId}/messages`),
+  sendCoachMessage: (bookingId: string, body: string) =>
+    request<CoachMessage>(`/coaches/booking/${bookingId}/messages`, { method: 'POST', body: { body } }),
 
   // ── Phase 2: corporate wellness ──
   myCompany: () => request<{ company: Company | null }>('/company/me'),

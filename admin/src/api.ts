@@ -69,6 +69,8 @@ export const api = {
   updateCoach: <T>(id: string, body: unknown) => req<T>('PUT', `/api/admin/coaches/${id}`, body),
   deleteCoach: (id: string) => req('DELETE', `/api/admin/coaches/${id}`),
   coachBookings: <T>() => req<T[]>('GET', '/api/admin/coach-bookings'),
+  bookingMessages: <T>(id: string) => req<T[]>('GET', `/api/admin/coach-bookings/${id}/messages`),
+  sendBookingMessage: <T>(id: string, body: string) => req<T>('POST', `/api/admin/coach-bookings/${id}/messages`, { body }),
 
   // ── Phase 2: companies (corporate) ──
   listCompanies: <T>() => req<T[]>('GET', '/api/admin/companies'),
