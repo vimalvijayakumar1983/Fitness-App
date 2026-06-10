@@ -58,6 +58,7 @@ export const api = {
 
   // ── Reports & pricing ──
   stats: <T>(days = 30) => req<T>('GET', `/api/admin/stats?days=${days}`),
+  seedCatalog: <T>() => req<T>('POST', '/api/admin/seed-catalog'),
   getPricing: <T>() => req<T>('GET', '/api/admin/pricing'),
   savePricing: <T>(body: unknown) => req<T>('PUT', '/api/admin/pricing', body),
 };

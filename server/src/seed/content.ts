@@ -57,6 +57,62 @@ const TEMPLATES = [
   },
 ];
 
+/**
+ * Backfill/refresh the full catalog into an EXISTING database (upsert by id).
+ * Adds any missing catalog items and updates them to canonical values, without
+ * touching admin-created items (which have their own ids). Returns counts.
+ */
+export function importCatalog(): { foods: number; exercises: number; recipes: number } {
+  const t = now();
+  const foodIns = db.prepare(
+    `INSERT INTO cms_foods (id,name,brand,serving,calories,protein,carbs,fat,category,image_url,created_at,updated_at)
+     VALUES (@id,@name,@brand,@serving,@calories,@protein,@carbs,@fat,@category,@image_url,@t,@t)
+     ON CONFLICT(id) DO UPDATE SET name=excluded.name, serving=excluded.serving, calories=excluded.calories,
+       protein=excluded.protein, carbs=excluded.carbs, fat=excluded.fat, category=excluded.category, updated_at=excluded.updated_at`,
+  );
+  db.transaction(() => FOODS.forEach((f) => foodIns.run({
+    id: f.id, name: f.name, brand: f.brand ?? null, serving: f.serving, calories: f.calories,
+    protein: f.protein ?? 0, carbs: f.carbs ?? 0, fat: f.fat ?? 0, category: f.category, image_url: f.imageUrl ?? null, t,
+  })))();
+
+  const exIns = db.prepare(
+    `INSERT INTO cms_exercises (id,name,category,muscle,equipment,met,image_url,created_at,updated_at)
+     VALUES (@id,@name,@category,@muscle,@equipment,@met,@image_url,@t,@t)
+     ON CONFLICT(id) DO UPDATE SET name=excluded.name, category=excluded.category, muscle=excluded.muscle,
+       equipment=excluded.equipment, met=excluded.met, updated_at=excluded.updated_at`,
+  );
+  db.transaction(() => EX.forEach((e) => exIns.run({
+    id: e.id, name: e.name, category: e.category, muscle: e.muscle, equipment: e.equipment ?? null, met: e.met, image_url: e.imageUrl ?? null, t,
+  })))();
+
+  const recIns = db.prepare(
+    `INSERT INTO cms_recipes (id,name,emoji,meal_types,diets,time_min,calories,protein,carbs,fat,ingredients,steps,image_url,created_at,updated_at)
+     VALUES (@id,@name,@emoji,@meal_types,@diets,@time_min,@calories,@protein,@carbs,@fat,@ingredients,@steps,@image_url,@t,@t)
+     ON CONFLICT(id) DO UPDATE SET name=excluded.name, emoji=excluded.emoji, meal_types=excluded.meal_types,
+       diets=excluded.diets, time_min=excluded.time_min, calories=excluded.calories, protein=excluded.protein,
+       carbs=excluded.carbs, fat=excluded.fat, ingredients=excluded.ingredients, steps=excluded.steps, updated_at=excluded.updated_at`,
+  );
+  db.transaction(() => RECIPES.forEach((r) => recIns.run({
+    id: r.id, name: r.name, emoji: r.emoji ?? '🍽️', meal_types: JSON.stringify(r.mealTypes ?? []), diets: JSON.stringify(r.diets ?? []),
+    time_min: r.timeMin ?? 15, calories: r.calories, protein: r.protein ?? 0, carbs: r.carbs ?? 0, fat: r.fat ?? 0,
+    ingredients: JSON.stringify(r.ingredients ?? []), steps: JSON.stringify(r.steps ?? []), image_url: r.imageUrl ?? null, t,
+  })))();
+
+  // Seed segments/templates if still empty.
+  if (count('segments') === 0) {
+    const ins = db.prepare('INSERT INTO segments (id,name,color,created_at) VALUES (?,?,?,?)');
+    db.transaction(() => SEGMENTS.forEach(([name, color], i) => ins.run(`seg_${i + 1}`, name, color, t)))();
+  }
+  if (count('plan_templates') === 0) {
+    const ins = db.prepare(
+      `INSERT INTO plan_templates (id,name,description,segment_id,meals,created_at,updated_at) VALUES (?,?,?,NULL,?,?,?)`,
+    );
+    db.transaction(() => TEMPLATES.forEach((tp) => ins.run(tp.id, tp.name, tp.description, JSON.stringify(tp.meals), t, t)))();
+  }
+
+  return { foods: FOODS.length, exercises: EX.length, recipes: RECIPES.length };
+}
+
 export function seedContent(): void {
   const t = now();
 

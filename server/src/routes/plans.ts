@@ -4,6 +4,7 @@ import { db } from '../db';
 import { AuthedRequest, requireAuth, requireAdmin } from '../auth';
 import { makeId } from '../util';
 import { getPricing, setPricing, Pricing } from '../settings';
+import { importCatalog } from '../seed/content';
 
 /**
  * Stage 2 — Plans & CRM.
@@ -145,6 +146,12 @@ adminRouter.put('/plan-templates/:id', (req: Request, res: Response) => {
 adminRouter.delete('/plan-templates/:id', (req: Request, res: Response) => {
   db.prepare('DELETE FROM plan_templates WHERE id = ?').run(req.params.id);
   res.json({ ok: true });
+});
+
+// ─────────────────── Content backfill (one-time import) ───────────────────
+adminRouter.post('/seed-catalog', (_req, res) => {
+  const counts = importCatalog();
+  res.json({ ok: true, imported: counts });
 });
 
 // ───────────────────────── Pricing (settings) ─────────────────────────

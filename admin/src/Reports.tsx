@@ -62,6 +62,16 @@ export function ReportsView() {
     downloadCSV('signups.csv', [['Date', 'Signups', 'Cumulative accounts'],
       ...s.signups.map((d, i) => [d.date, d.count, s.cumulative[i].count])]);
   };
+  const [importing, setImporting] = useState(false);
+  const importCatalog = async () => {
+    if (!confirm('Import/refresh the full food, recipe & exercise catalog? This adds missing items and updates the built-in ones. Your custom items are untouched.')) return;
+    setImporting(true);
+    try {
+      const r = await api.seedCatalog<{ imported: { foods: number; exercises: number; recipes: number } }>();
+      alert(`Catalog imported: ${r.imported.foods} foods, ${r.imported.exercises} exercises, ${r.imported.recipes} recipes.`);
+      load(days);
+    } catch (e: any) { alert('Import failed: ' + e.message); } finally { setImporting(false); }
+  };
 
   if (loading && !s) return <div className="resource"><p className="muted">Loading reports…</p></div>;
   if (err) return <div className="resource"><div className="err">{err}</div></div>;
@@ -82,6 +92,7 @@ export function ReportsView() {
           </div>
           <button className="ghost" onClick={exportCustomers}>⬇ Customers CSV</button>
           <button className="ghost" onClick={exportSignups}>⬇ Signups CSV</button>
+          <button onClick={importCatalog} disabled={importing}>{importing ? 'Importing…' : '⤓ Import full catalog'}</button>
         </div>
       </div>
 
