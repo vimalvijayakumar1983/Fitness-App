@@ -209,6 +209,13 @@ export function initSchema(): void {
       current_period_end TEXT,
       updated_at TEXT NOT NULL
     );
+
+    -- Key/value app settings (e.g. pricing config), editable from the admin.
+    CREATE TABLE IF NOT EXISTS settings (
+      key TEXT PRIMARY KEY,
+      value TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    );
   `);
 }
 

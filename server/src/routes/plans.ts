@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { db } from '../db';
 import { AuthedRequest, requireAuth, requireAdmin } from '../auth';
 import { makeId } from '../util';
+import { getPricing, setPricing, Pricing } from '../settings';
 
 /**
  * Stage 2 — Plans & CRM.
@@ -127,6 +128,78 @@ adminRouter.put('/plan-templates/:id', (req: Request, res: Response) => {
 adminRouter.delete('/plan-templates/:id', (req: Request, res: Response) => {
   db.prepare('DELETE FROM plan_templates WHERE id = ?').run(req.params.id);
   res.json({ ok: true });
+});
+
+// ───────────────────────── Pricing (settings) ─────────────────────────
+adminRouter.get('/pricing', (_req, res) => res.json(getPricing()));
+adminRouter.put('/pricing', (req: Request, res: Response) => {
+  const p = req.body as Pricing;
+  if (!p?.premium || !p?.coached) return res.status(400).json({ error: 'Invalid pricing.' });
+  setPricing(p);
+  res.json(getPricing());
+});
+
+// ───────────────────────── Reports / analytics ─────────────────────────
+adminRouter.get('/stats', (_req, res) => {
+  const one = (sql: string, ...args: any[]) => (db.prepare(sql).get(...args) as any)?.n ?? 0;
+  const dayAgo = (d: number) => new Date(Date.now() - d * 864e5).toISOString();
+
+  const totalUsers = one('SELECT COUNT(*) n FROM users');
+  const totalCustomers = one("SELECT COUNT(*) n FROM users WHERE role = 'customer'");
+  const newToday = one('SELECT COUNT(*) n FROM users WHERE created_at >= ?', dayAgo(1));
+  const new7d = one('SELECT COUNT(*) n FROM users WHERE created_at >= ?', dayAgo(7));
+  const new30d = one('SELECT COUNT(*) n FROM users WHERE created_at >= ?', dayAgo(30));
+
+  const activeSql = "status IN ('active','trialing')";
+  const premium = one(`SELECT COUNT(*) n FROM subscriptions WHERE plan='premium' AND ${activeSql}`);
+  const coached = one(`SELECT COUNT(*) n FROM subscriptions WHERE plan='coached' AND ${activeSql}`);
+  const paying = premium + coached;
+  const free = Math.max(0, totalUsers - paying);
+  const conversion = totalUsers ? Math.round((paying / totalUsers) * 1000) / 10 : 0;
+
+  // Rough MRR estimate in USD using current pricing (monthly equivalent).
+  const pr = getPricing();
+  const mPrem = pr.premium.month.usd / 100;
+  const mCoach = pr.coached.month.usd / 100;
+  const mrr = Math.round(premium * mPrem + coached * mCoach);
+
+  // Signups per day, last 14 days.
+  const rows = db
+    .prepare(
+      `SELECT substr(created_at,1,10) d, COUNT(*) n FROM users
+       WHERE created_at >= ? GROUP BY d ORDER BY d`,
+    )
+    .all(dayAgo(14)) as { d: string; n: number }[];
+  const byDay = new Map(rows.map((r) => [r.d, r.n]));
+  const signups: { date: string; count: number }[] = [];
+  for (let i = 13; i >= 0; i--) {
+    const d = new Date(Date.now() - i * 864e5).toISOString().slice(0, 10);
+    signups.push({ date: d, count: byDay.get(d) ?? 0 });
+  }
+
+  const segments = db
+    .prepare(
+      `SELECT s.name, COUNT(u.id) n FROM segments s
+       LEFT JOIN users u ON u.segment_id = s.id GROUP BY s.id ORDER BY n DESC`,
+    )
+    .all() as { name: string; n: number }[];
+
+  const recent = db
+    .prepare(
+      `SELECT u.email, u.name, u.created_at, COALESCE(sub.plan,'free') plan
+       FROM users u LEFT JOIN subscriptions sub ON sub.user_id = u.id
+       ORDER BY u.created_at DESC LIMIT 8`,
+    )
+    .all() as any[];
+
+  res.json({
+    totalUsers, totalCustomers, newToday, new7d, new30d,
+    plans: { free, premium, coached, paying },
+    conversion, mrr,
+    signups,
+    segments,
+    recent: recent.map((r) => ({ email: r.email, name: r.name, plan: r.plan, createdAt: r.created_at })),
+  });
 });
 
 // ───────────────────── Customer-facing: my plan ─────────────────────

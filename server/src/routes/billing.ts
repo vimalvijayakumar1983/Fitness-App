@@ -2,6 +2,7 @@ import { Router, Request, Response } from 'express';
 import Stripe from 'stripe';
 import { db } from '../db';
 import { AuthedRequest, requireAuth } from '../auth';
+import { getPricing } from '../settings';
 
 /**
  * Stage 3 — billing. Works in two modes:
@@ -15,12 +16,6 @@ const stripe = STRIPE_KEY ? new Stripe(STRIPE_KEY) : null;
 
 type Tier = 'premium' | 'coached';
 type Interval = 'month' | 'year';
-
-// Prices in minor units (cents/fils) per currency.
-const PRICES: Record<Tier, Record<Interval, Record<string, number>>> = {
-  premium: { month: { usd: 999, aed: 3900, eur: 899, gbp: 799 }, year: { usd: 7900, aed: 29900, eur: 6900, gbp: 5900 } },
-  coached: { month: { usd: 9900, aed: 39900, eur: 8900, gbp: 7900 }, year: { usd: 99000, aed: 399000, eur: 89000, gbp: 79000 } },
-};
 
 const now = () => new Date().toISOString();
 
@@ -52,6 +47,7 @@ billingRouter.post('/checkout', async (req: AuthedRequest, res: Response) => {
   const tier = (req.body?.tier as Tier) ?? 'premium';
   const interval = (req.body?.interval as Interval) ?? 'month';
   const currency = ((req.body?.currency as string) ?? 'usd').toLowerCase();
+  const PRICES = getPricing();
   const amount = PRICES[tier]?.[interval]?.[currency] ?? PRICES[tier]?.[interval]?.usd;
   if (!amount) return res.status(400).json({ error: 'Unknown plan or currency.' });
 

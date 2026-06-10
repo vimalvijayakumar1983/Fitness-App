@@ -54,6 +54,11 @@ export const api = {
   createTemplate: <T>(body: unknown) => req<T>('POST', '/api/admin/plan-templates', body),
   updateTemplate: <T>(id: string, body: unknown) => req<T>('PUT', `/api/admin/plan-templates/${id}`, body),
   deleteTemplate: (id: string) => req('DELETE', `/api/admin/plan-templates/${id}`),
+
+  // ── Reports & pricing ──
+  stats: <T>() => req<T>('GET', '/api/admin/stats'),
+  getPricing: <T>() => req<T>('GET', '/api/admin/pricing'),
+  savePricing: <T>(body: unknown) => req<T>('PUT', '/api/admin/pricing', body),
 };
 
 export { API_URL };

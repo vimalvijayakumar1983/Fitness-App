@@ -1,10 +1,10 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Linking, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useAuth } from '@/context/AuthContext';
 import { useData } from '@/context/DataContext';
-import { api } from '@/services/api';
+import { api, PricingConfig } from '@/services/api';
 import { colors, gradients, hexA, radius, spacing, type } from '@/theme/colors';
 
 interface Props {
@@ -18,10 +18,10 @@ type Interval = 'month' | 'year';
 const CURRENCIES = ['usd', 'aed', 'eur', 'gbp'] as const;
 const SYMBOL: Record<string, string> = { usd: '$', aed: 'AED ', eur: '€', gbp: '£' };
 
-// Display prices (server is the source of truth for charging).
-const PRICES: Record<Tier, Record<Interval, Record<string, number>>> = {
-  premium: { month: { usd: 9.99, aed: 39, eur: 8.99, gbp: 7.99 }, year: { usd: 79, aed: 299, eur: 69, gbp: 59 } },
-  coached: { month: { usd: 99, aed: 399, eur: 89, gbp: 79 }, year: { usd: 990, aed: 3990, eur: 890, gbp: 790 } },
+// Fallback display prices (in minor units) until the live pricing loads.
+const DEFAULT_PRICES: PricingConfig = {
+  premium: { month: { usd: 999, aed: 3900, eur: 899, gbp: 799 }, year: { usd: 7900, aed: 29900, eur: 6900, gbp: 5900 } },
+  coached: { month: { usd: 9900, aed: 39900, eur: 8900, gbp: 7900 }, year: { usd: 99000, aed: 399000, eur: 89000, gbp: 79000 } },
 };
 
 const FEATURES: Record<Tier, string[]> = {
@@ -36,6 +36,12 @@ export function PaywallModal({ visible, onClose }: Props) {
   const [currency, setCurrency] = useState('usd');
   const [busy, setBusy] = useState<Tier | null>(null);
   const [msg, setMsg] = useState('');
+  const [prices, setPrices] = useState<PricingConfig>(DEFAULT_PRICES);
+
+  // Load admin-set prices so the paywall reflects the latest pricing.
+  useEffect(() => {
+    if (visible) api.getPricing().then(setPrices).catch(() => {});
+  }, [visible]);
 
   const subscribe = async (tier: Tier) => {
     if (!token) {
@@ -63,7 +69,8 @@ export function PaywallModal({ visible, onClose }: Props) {
   };
 
   const price = (tier: Tier) => {
-    const v = PRICES[tier][interval][currency] ?? PRICES[tier][interval].usd;
+    const minor = prices[tier][interval][currency] ?? prices[tier][interval].usd ?? 0;
+    const v = minor / 100;
     const per = interval === 'year' ? '/yr' : '/mo';
     return `${SYMBOL[currency]}${v}${per}`;
   };

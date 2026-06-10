@@ -2,6 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { api, auth, Me } from './api';
 import { CustomersView } from './Customers';
 import { PlansView } from './Plans';
+import { ReportsView } from './Reports';
+import { PricingView } from './Pricing';
 
 type FieldType = 'text' | 'number' | 'select' | 'tags' | 'lines' | 'ingredients';
 interface Field {
@@ -267,7 +269,7 @@ function ResourceView({ resource }: { resource: Resource }) {
 export function App() {
   const [me, setMe] = useState<Me['user'] | null>(null);
   const [checking, setChecking] = useState(true);
-  const [tab, setTab] = useState(RESOURCES[0].key);
+  const [tab, setTab] = useState('overview');
 
   useEffect(() => {
     if (!auth.token) { setChecking(false); return; }
@@ -284,9 +286,11 @@ export function App() {
       <aside className="sidebar">
         <div className="brand">🥗 Admin</div>
         <nav>
+          <button className={tab === 'overview' ? 'active' : ''} onClick={() => setTab('overview')}>📊 Overview</button>
           <div className="nav-sep">CRM</div>
           <button className={tab === 'customers' ? 'active' : ''} onClick={() => setTab('customers')}>Customers</button>
           <button className={tab === 'plans' ? 'active' : ''} onClick={() => setTab('plans')}>Plans</button>
+          <button className={tab === 'pricing' ? 'active' : ''} onClick={() => setTab('pricing')}>Pricing</button>
           <div className="nav-sep">Content</div>
           {RESOURCES.map((r) => (
             <button key={r.key} className={tab === r.key ? 'active' : ''} onClick={() => setTab(r.key)}>{r.label}</button>
@@ -298,7 +302,9 @@ export function App() {
         </div>
       </aside>
       <main className="content">
-        {tab === 'customers' ? <CustomersView />
+        {tab === 'overview' ? <ReportsView />
+          : tab === 'pricing' ? <PricingView />
+          : tab === 'customers' ? <CustomersView />
           : tab === 'plans' ? <PlansView />
           : resource ? <ResourceView resource={resource} />
           : null}

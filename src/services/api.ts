@@ -88,6 +88,12 @@ export interface Subscription {
   stripe?: boolean;
 }
 
+/** Pricing in minor units per tier → interval → currency. */
+export interface PricingConfig {
+  premium: { month: Record<string, number>; year: Record<string, number> };
+  coached: { month: Record<string, number>; year: Record<string, number> };
+}
+
 /** Best-effort fetch of admin content; returns empty sets on any failure. */
 export async function fetchCmsContent(): Promise<CmsContent> {
   const empty: CmsContent = { foods: [], exercises: [], recipes: [] };
@@ -180,6 +186,7 @@ export const api = {
 
   // CMS content (admin-managed; public reads)
   contentAll: () => request<CmsContent>('/content/all', { auth: false }),
+  getPricing: () => request<PricingConfig>('/content/pricing', { auth: false }),
 
   // AI coach
   coachChat: (message: string, history?: { role: 'user' | 'assistant'; content: string }[]) =>

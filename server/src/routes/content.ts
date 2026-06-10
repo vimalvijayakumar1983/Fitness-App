@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { db } from '../db';
 import { requireAdmin } from '../auth';
 import { makeId } from '../util';
+import { getPricing } from '../settings';
 
 /**
  * CMS content API. Reads are public so the customer app can fetch the
@@ -65,6 +66,7 @@ contentRouter.get('/recipes', (_req, res) =>
   res.json(db.prepare('SELECT * FROM cms_recipes ORDER BY updated_at DESC').all().map(mapRecipe)));
 contentRouter.get('/segments', (_req, res) =>
   res.json(db.prepare('SELECT * FROM segments ORDER BY name').all()));
+contentRouter.get('/pricing', (_req, res) => res.json(getPricing()));
 
 /** One call for the app to hydrate all admin content. */
 contentRouter.get('/all', (_req, res) =>
