@@ -216,6 +216,79 @@ export function initSchema(): void {
       value TEXT NOT NULL,
       updated_at TEXT NOT NULL
     );
+
+    -- ── Phase 2: Condition-reversal programs (admin-managed, public read) ──
+    CREATE TABLE IF NOT EXISTS programs (
+      id TEXT PRIMARY KEY,
+      slug TEXT,
+      name TEXT NOT NULL,
+      condition TEXT NOT NULL,        -- diabetes | obesity | hypertension | metabolic | ...
+      tagline TEXT,
+      description TEXT,
+      duration_weeks INTEGER NOT NULL DEFAULT 12,
+      image_url TEXT,
+      color TEXT,
+      outcomes TEXT NOT NULL DEFAULT '[]',  -- JSON array of strings
+      modules TEXT NOT NULL DEFAULT '[]',   -- JSON array of {week,title,focus,tasks[]}
+      active INTEGER NOT NULL DEFAULT 1,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    );
+
+    -- A user's enrollment in a program with weekly progress.
+    CREATE TABLE IF NOT EXISTS program_enrollments (
+      id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      program_id TEXT NOT NULL REFERENCES programs(id) ON DELETE CASCADE,
+      started_at TEXT NOT NULL,
+      current_week INTEGER NOT NULL DEFAULT 1,
+      status TEXT NOT NULL DEFAULT 'active', -- active | paused | completed
+      completed_tasks TEXT NOT NULL DEFAULT '[]', -- JSON array of "w{week}:{index}" keys
+      updated_at TEXT NOT NULL,
+      UNIQUE(user_id, program_id)
+    );
+    CREATE INDEX IF NOT EXISTS idx_enroll_user ON program_enrollments(user_id);
+
+    -- ── Phase 2: Coaching marketplace (admin-managed, public read) ──
+    CREATE TABLE IF NOT EXISTS coaches (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      title TEXT,
+      specialties TEXT NOT NULL DEFAULT '[]', -- JSON array
+      bio TEXT,
+      photo_url TEXT,
+      rating REAL NOT NULL DEFAULT 5,
+      reviews INTEGER NOT NULL DEFAULT 0,
+      price_month_usd REAL NOT NULL DEFAULT 99,
+      languages TEXT NOT NULL DEFAULT '[]',   -- JSON array
+      active INTEGER NOT NULL DEFAULT 1,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    );
+
+    -- A customer's booking/relationship with a coach.
+    CREATE TABLE IF NOT EXISTS coach_bookings (
+      id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      coach_id TEXT NOT NULL REFERENCES coaches(id) ON DELETE CASCADE,
+      status TEXT NOT NULL DEFAULT 'requested', -- requested | active | ended
+      note TEXT,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_booking_user ON coach_bookings(user_id);
+
+    -- ── Phase 2: Corporate wellness (B2B orgs whose employees are members) ──
+    CREATE TABLE IF NOT EXISTS companies (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      join_code TEXT UNIQUE NOT NULL,
+      seats INTEGER NOT NULL DEFAULT 50,
+      contact_email TEXT,
+      plan TEXT NOT NULL DEFAULT 'premium', -- entitlement granted to employees
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    );
   `);
 }
 
@@ -233,4 +306,5 @@ export function migrate(): void {
   };
   add(`ALTER TABLE users ADD COLUMN role TEXT NOT NULL DEFAULT 'customer'`);
   add(`ALTER TABLE users ADD COLUMN segment_id TEXT`);
+  add(`ALTER TABLE users ADD COLUMN company_id TEXT`);
 }

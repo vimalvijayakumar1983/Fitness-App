@@ -15,6 +15,8 @@ import { syncRouter } from './routes/sync';
 import { adminRouter, mePlanRouter } from './routes/plans';
 import { billingRouter, billingWebhook } from './routes/billing';
 import { labsRouter } from './routes/labs';
+import { programsRouter, coachesRouter, companyRouter, adminPhase2Router } from './routes/phase2';
+import { seedPhase2 } from './seed/phase2';
 
 const app = express();
 
@@ -55,9 +57,13 @@ app.use('/api/auth', authRouter);
 app.use('/api/content', contentRouter);
 app.use('/api/sync', syncRouter);
 app.use('/api/admin', adminRouter);
+app.use('/api/admin', adminPhase2Router); // Phase 2 back-office (programs, coaches, companies)
 app.use('/api/me', mePlanRouter);
 app.use('/api/billing', billingRouter);
 app.use('/api/labs', labsRouter);
+app.use('/api/programs', programsRouter);
+app.use('/api/coaches', coachesRouter);
+app.use('/api/company', companyRouter);
 app.use('/api/goals', goalsRouter);
 app.use('/api/foods', foodsRouter);
 app.use('/api/analytics', analyticsRouter);
@@ -71,6 +77,7 @@ seedAdmin();
 const added = seedFoods();
 if (added > 0) console.log(`Seeded ${added} foods.`);
 seedContent();
+seedPhase2();
 
 const port = Number(process.env.PORT) || 4000;
 app.listen(port, () => {
