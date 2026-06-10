@@ -57,13 +57,15 @@ const chatSchema = z.object({
     .array(z.object({ role: z.enum(['user', 'assistant']), content: z.string() }))
     .max(20)
     .optional(),
+  // Optional client-computed health snapshot (longevity, glucose, program, …).
+  context: z.string().max(2000).optional(),
 });
 
 coachRouter.post('/chat', async (req: AuthedRequest, res: Response) => {
   const parsed = chatSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: parsed.error.message });
-  const { message, history = [] } = parsed.data;
-  const context = todaysContext(req.userId!);
+  const { message, history = [], context: clientContext } = parsed.data;
+  const context = [todaysContext(req.userId!), clientContext].filter(Boolean).join('\n\n');
 
   if (!anthropic) {
     return res.json({ reply: offlineReply(message, context), offline: true });

@@ -256,10 +256,10 @@ export const api = {
   leaveCompany: () => request<{ ok: boolean }>('/company/leave', { method: 'POST' }),
 
   // AI coach
-  coachChat: (message: string, history?: { role: 'user' | 'assistant'; content: string }[]) =>
+  coachChat: (message: string, history?: { role: 'user' | 'assistant'; content: string }[], context?: string) =>
     request<{ reply: string; offline: boolean }>('/coach/chat', {
       method: 'POST',
-      body: { message, history },
+      body: { message, history, context },
     }),
   analyzeFoodPhoto: (imageBase64: string, mediaType = 'image/jpeg') =>
     request<{ items: FoodResult[]; note?: string }>('/coach/analyze-food', {

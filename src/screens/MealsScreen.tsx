@@ -11,6 +11,7 @@ import { SectionHeader } from '@/components/SectionHeader';
 import { MacroSummary } from '@/components/MacroSummary';
 import { WaterTracker } from '@/components/WaterTracker';
 import { FoodSearchModal } from '@/components/FoodSearchModal';
+import { PhotoLogModal } from '@/components/PhotoLogModal';
 import { useData } from '@/context/DataContext';
 import { colors, gradients, radius, spacing, type } from '@/theme/colors';
 import { FoodItem, MealType } from '@/models/types';
@@ -31,6 +32,7 @@ export function MealsScreen() {
   const [name, setName] = useState('');
   const [calories, setCalories] = useState('');
   const [searchOpen, setSearchOpen] = useState(false);
+  const [photoOpen, setPhotoOpen] = useState(false);
 
   const today = todayISO();
   const todaysMeals = data.meals.filter((m) => m.date === today);
@@ -75,10 +77,18 @@ export function MealsScreen() {
         <SegmentedSelector options={MEAL_TYPES} value={type_} onChange={setType} accent={colors.meal} />
 
         <PrimaryButton
+          label="📸 Snap or scan a meal"
+          onPress={() => setPhotoOpen(true)}
+          gradient={gradients.primary}
+          style={{ marginTop: spacing.lg }}
+        />
+        <PrimaryButton
           label="🔍 Search foods"
           onPress={() => setSearchOpen(true)}
           gradient={gradients.meal}
-          style={{ marginTop: spacing.lg }}
+          variant="soft"
+          color={colors.meal}
+          style={{ marginTop: spacing.sm }}
         />
 
         <View style={styles.divider}>
@@ -138,6 +148,13 @@ export function MealsScreen() {
         onDeleteFood={deleteCustomFood}
         onClose={() => setSearchOpen(false)}
         onAdd={onAddFromSearch}
+      />
+
+      <PhotoLogModal
+        visible={photoOpen}
+        mealType={type_}
+        onAdd={(items) => addMeal({ date: today, type: type_, items })}
+        onClose={() => setPhotoOpen(false)}
       />
     </ScreenContainer>
   );

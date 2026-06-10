@@ -2,9 +2,12 @@ import React, { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '@/context/AuthContext';
+import { useData } from '@/context/DataContext';
 import { api, apiEnabled } from '@/services/api';
+import { buildHealthContext } from '@/utils/coachContext';
 import { colors, radius, spacing, type } from '@/theme/colors';
 import { BRAND } from '@/theme/brand';
+import type { Enrollment, Program } from '@/models/types';
 
 interface Props {
   visible: boolean;
@@ -21,14 +24,25 @@ const SUGGESTIONS = ['What should I eat today?', 'Am I on track with my goals?',
 /** Claude-powered AI health coach chat. */
 export function CoachModal({ visible, onClose }: Props) {
   const { token } = useAuth();
+  const { data } = useData();
   const [messages, setMessages] = useState<Msg[]>([GREETING]);
   const [input, setInput] = useState('');
   const [busy, setBusy] = useState(false);
+  const [programs, setPrograms] = useState<Program[]>([]);
+  const [enrollments, setEnrollments] = useState<Enrollment[]>([]);
   const scrollRef = useRef<ScrollView>(null);
 
   useEffect(() => {
     if (visible) setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 100);
   }, [visible, messages]);
+
+  // Pull program context once when opened (best-effort) so the coach can
+  // reference the user's active reversal program and tasks.
+  useEffect(() => {
+    if (!visible || !token) return;
+    api.listPrograms().then(setPrograms).catch(() => {});
+    api.myEnrollments().then(setEnrollments).catch(() => {});
+  }, [visible, token]);
 
   const send = async (text: string) => {
     const msg = text.trim();
@@ -38,7 +52,8 @@ export function CoachModal({ visible, onClose }: Props) {
     setInput('');
     setBusy(true);
     try {
-      const res = await api.coachChat(msg, history);
+      const context = buildHealthContext(data, programs, enrollments);
+      const res = await api.coachChat(msg, history, context);
       setMessages((m) => [...m, { role: 'assistant', content: res.reply }]);
     } catch (e: any) {
       setMessages((m) => [...m, { role: 'assistant', content: e.message || 'Sorry, I had trouble responding. Please try again.' }]);
