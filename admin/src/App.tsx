@@ -5,6 +5,9 @@ import { PlansView } from './Plans';
 import { ReportsView } from './Reports';
 import { RevenueView } from './Revenue';
 import { PricingView } from './Pricing';
+import { ProgramsView } from './Programs';
+import { CoachesView } from './Coaches';
+import { CompaniesView } from './Companies';
 
 type FieldType = 'text' | 'number' | 'select' | 'tags' | 'lines' | 'ingredients';
 interface Field {
@@ -293,6 +296,10 @@ export function App() {
           <button className={tab === 'customers' ? 'active' : ''} onClick={() => setTab('customers')}>Customers</button>
           <button className={tab === 'plans' ? 'active' : ''} onClick={() => setTab('plans')}>Plans</button>
           <button className={tab === 'pricing' ? 'active' : ''} onClick={() => setTab('pricing')}>Pricing</button>
+          <div className="nav-sep">Care</div>
+          <button className={tab === 'programs' ? 'active' : ''} onClick={() => setTab('programs')}>Programs</button>
+          <button className={tab === 'coaches' ? 'active' : ''} onClick={() => setTab('coaches')}>Coaches</button>
+          <button className={tab === 'companies' ? 'active' : ''} onClick={() => setTab('companies')}>Corporate</button>
           <div className="nav-sep">Content</div>
           {RESOURCES.map((r) => (
             <button key={r.key} className={tab === r.key ? 'active' : ''} onClick={() => setTab(r.key)}>{r.label}</button>
@@ -309,6 +316,9 @@ export function App() {
           : tab === 'pricing' ? <PricingView />
           : tab === 'customers' ? <CustomersView />
           : tab === 'plans' ? <PlansView />
+          : tab === 'programs' ? <ProgramsView />
+          : tab === 'coaches' ? <CoachesView />
+          : tab === 'companies' ? <CompaniesView />
           : resource ? <ResourceView resource={resource} />
           : null}
       </main>

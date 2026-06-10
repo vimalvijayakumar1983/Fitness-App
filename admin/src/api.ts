@@ -56,6 +56,27 @@ export const api = {
   updateTemplate: <T>(id: string, body: unknown) => req<T>('PUT', `/api/admin/plan-templates/${id}`, body),
   deleteTemplate: (id: string) => req('DELETE', `/api/admin/plan-templates/${id}`),
 
+  // ── Phase 2: programs ──
+  listPrograms: <T>() => req<T[]>('GET', '/api/admin/programs'),
+  createProgram: <T>(body: unknown) => req<T>('POST', '/api/admin/programs', body),
+  updateProgram: <T>(id: string, body: unknown) => req<T>('PUT', `/api/admin/programs/${id}`, body),
+  deleteProgram: (id: string) => req('DELETE', `/api/admin/programs/${id}`),
+  programEnrollments: <T>(id: string) => req<T[]>('GET', `/api/admin/programs/${id}/enrollments`),
+
+  // ── Phase 2: coaches ──
+  listCoaches: <T>() => req<T[]>('GET', '/api/admin/coaches'),
+  createCoach: <T>(body: unknown) => req<T>('POST', '/api/admin/coaches', body),
+  updateCoach: <T>(id: string, body: unknown) => req<T>('PUT', `/api/admin/coaches/${id}`, body),
+  deleteCoach: (id: string) => req('DELETE', `/api/admin/coaches/${id}`),
+  coachBookings: <T>() => req<T[]>('GET', '/api/admin/coach-bookings'),
+
+  // ── Phase 2: companies (corporate) ──
+  listCompanies: <T>() => req<T[]>('GET', '/api/admin/companies'),
+  getCompany: <T>(id: string) => req<T>('GET', `/api/admin/companies/${id}`),
+  createCompany: <T>(body: unknown) => req<T>('POST', '/api/admin/companies', body),
+  updateCompany: <T>(id: string, body: unknown) => req<T>('PUT', `/api/admin/companies/${id}`, body),
+  deleteCompany: (id: string) => req('DELETE', `/api/admin/companies/${id}`),
+
   // ── Reports & pricing ──
   stats: <T>(days = 30) => req<T>('GET', `/api/admin/stats?days=${days}`),
   cohorts: <T>() => req<T>('GET', '/api/admin/cohorts'),
