@@ -27,7 +27,7 @@ export function Thumb({ uri, emoji, colors: grad, size = 46, style }: Props) {
       >
         <Text style={{ fontSize: size * 0.42 }}>{emoji}</Text>
       </LinearGradient>
-      {!failed ? (
+      {uri && !failed ? (
         <Image
           source={{ uri }}
           style={[dims, styles.img]}

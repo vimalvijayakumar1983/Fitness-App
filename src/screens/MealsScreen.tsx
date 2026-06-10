@@ -15,7 +15,7 @@ import { useData } from '@/context/DataContext';
 import { colors, gradients, radius, spacing, type } from '@/theme/colors';
 import { FoodItem, MealType } from '@/models/types';
 import { summarizeMacros, waterMl } from '@/utils/selectors';
-import { keywordImage } from '@/utils/images';
+import { foodEmojiName } from '@/utils/images';
 import { formatTime, todayISO } from '@/utils/date';
 
 const MEAL_TYPES: { label: string; value: MealType }[] = [
@@ -115,9 +115,8 @@ export function MealsScreen() {
           return (
             <EntryRow
               key={meal.id}
-              emoji="🍽️"
+              emoji={foodEmojiName(meal.items[0]?.name ?? '')}
               gradient={gradients.meal}
-              imageUrl={keywordImage(meal.items[0]?.name ?? 'meal', meal.id, 'food')}
               title={meal.type[0].toUpperCase() + meal.type.slice(1)}
               subtitle={meal.items.map((i) => i.name).join(', ')}
               meta={formatTime(meal.loggedAt)}

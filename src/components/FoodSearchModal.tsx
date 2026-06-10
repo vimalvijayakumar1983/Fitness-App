@@ -7,12 +7,8 @@ import { FoodEditorModal } from './FoodEditorModal';
 import { Thumb } from './Thumb';
 import { colors, gradients, radius, spacing, type } from '@/theme/colors';
 import { foodsById, mergeFoods, searchFoods } from '@/data/foods';
-import { foodImage } from '@/utils/images';
+import { foodEmoji, foodImage } from '@/utils/images';
 import type { Food, FoodItem, MealType } from '@/models/types';
-
-const CATEGORY_EMOJI: Record<Food['category'], string> = {
-  protein: '🍗', carb: '🍚', veg: '🥦', fruit: '🍎', dairy: '🧀', fat: '🥑', drink: '🥤', snack: '🍫', meal: '🍽️',
-};
 
 interface Props {
   visible: boolean;
@@ -126,7 +122,7 @@ export function FoodSearchModal({
               const fav = favoriteIds.includes(f.id);
               return (
                 <View key={f.id} style={[styles.row, qty > 0 && styles.rowActive]}>
-                  <Thumb uri={foodImage(f)} emoji={CATEGORY_EMOJI[f.category]} colors={gradients.meal} size={44} style={{ marginRight: spacing.md }} />
+                  <Thumb uri={foodImage(f)} emoji={foodEmoji(f)} colors={gradients.meal} size={44} style={{ marginRight: spacing.md }} />
                   <Pressable style={styles.rowMain} onPress={() => setQty(f.id, qty + 1)} onLongPress={() => openEditor(f)}>
                     <Text style={styles.foodName} numberOfLines={1}>{f.name}</Text>
                     <Text style={styles.foodMeta} numberOfLines={1}>
