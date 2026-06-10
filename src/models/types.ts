@@ -257,6 +257,79 @@ export interface LabReport {
   markers: LabMarker[];
 }
 
+// ── Phase 2: condition-reversal programs, coaching, corporate wellness ──
+
+/** One week of a reversal program. */
+export interface ProgramModule {
+  week: number;
+  title: string;
+  focus: string;
+  tasks: string[];
+}
+
+/** A condition-reversal program (Diabetes, Obesity, Metabolic, …). */
+export interface Program {
+  id: string;
+  slug?: string;
+  name: string;
+  condition: string;
+  tagline: string;
+  description: string;
+  durationWeeks: number;
+  imageUrl?: string;
+  color?: string;
+  outcomes: string[];
+  modules: ProgramModule[];
+  active: boolean;
+}
+
+/** A user's enrollment in a program with weekly progress. */
+export interface Enrollment {
+  id: string;
+  programId: string;
+  startedAt: ISODateTimeString;
+  currentWeek: number;
+  status: 'active' | 'paused' | 'completed';
+  /** Completed task keys, e.g. "w1:0". */
+  completedTasks: string[];
+  updatedAt: ISODateTimeString;
+}
+
+/** A coach in the marketplace. */
+export interface Coach {
+  id: string;
+  name: string;
+  title: string;
+  specialties: string[];
+  bio: string;
+  photoUrl?: string;
+  rating: number;
+  reviews: number;
+  priceMonthUsd: number;
+  languages: string[];
+  active: boolean;
+}
+
+/** A customer's booking with a coach. */
+export interface CoachBooking {
+  id: string;
+  coachId: string;
+  status: 'requested' | 'active' | 'ended';
+  note: string;
+  createdAt: ISODateTimeString;
+  updatedAt: ISODateTimeString;
+}
+
+/** A corporate wellness organisation the user belongs to. */
+export interface Company {
+  id: string;
+  name: string;
+  joinCode: string;
+  seats: number;
+  contactEmail: string;
+  plan: string;
+}
+
 export interface AppData {
   meals: MealEntry[];
   exercises: ExerciseEntry[];

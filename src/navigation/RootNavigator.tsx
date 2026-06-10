@@ -13,6 +13,7 @@ import { PlanScreen } from '@/screens/PlanScreen';
 import { ExerciseScreen } from '@/screens/ExerciseScreen';
 import { MoodScreen } from '@/screens/MoodScreen';
 import { SleepScreen } from '@/screens/SleepScreen';
+import { CareScreen } from '@/screens/CareScreen';
 
 const Tab = createBottomTabNavigator();
 
@@ -20,6 +21,7 @@ const META: Record<string, { icon: string; tint: string }> = {
   Today: { icon: '🏠', tint: colors.primary },
   Meals: { icon: '🍽️', tint: colors.meal },
   Plan: { icon: '🍱', tint: colors.warning },
+  Care: { icon: '🩺', tint: colors.primary },
   Exercise: { icon: '🏃', tint: colors.exercise },
   Mind: { icon: '🧠', tint: colors.mind },
   Sleep: { icon: '😴', tint: colors.sleep },
@@ -90,6 +92,7 @@ export function RootNavigator() {
         <Tab.Screen name="Today" component={DashboardScreen} />
         <Tab.Screen name="Meals" component={MealsScreen} />
         <Tab.Screen name="Plan" component={PlanScreen} />
+        <Tab.Screen name="Care" component={CareScreen} />
         <Tab.Screen name="Exercise" component={ExerciseScreen} />
         <Tab.Screen name="Mind" component={MoodScreen} />
         <Tab.Screen name="Sleep" component={SleepScreen} />

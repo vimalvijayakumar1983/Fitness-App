@@ -6,7 +6,17 @@
  * food search, AI coach). Point `API_BASE_URL` at your running server.
  */
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import type { ExerciseDef, Food, Recipe, LabMarker } from '@/models/types';
+import type {
+  ExerciseDef,
+  Food,
+  Recipe,
+  LabMarker,
+  Program,
+  Enrollment,
+  Coach,
+  CoachBooking,
+  Company,
+} from '@/models/types';
 
 /**
  * Base URL comes from EXPO_PUBLIC_API_URL (inlined at build time). When unset,
@@ -194,6 +204,33 @@ export const api = {
   // CMS content (admin-managed; public reads)
   contentAll: () => request<CmsContent>('/content/all', { auth: false }),
   getPricing: () => request<PricingConfig>('/content/pricing', { auth: false }),
+
+  // ── Phase 2: condition-reversal programs ──
+  listPrograms: () => request<Program[]>('/programs', { auth: false }),
+  getProgram: (id: string) => request<Program>(`/programs/${id}`, { auth: false }),
+  myEnrollments: () => request<Enrollment[]>('/programs/mine'),
+  enroll: (programId: string) =>
+    request<Enrollment>(`/programs/${programId}/enroll`, { method: 'POST' }),
+  updateEnrollment: (
+    id: string,
+    patch: { currentWeek?: number; status?: Enrollment['status']; completedTasks?: string[] },
+  ) => request<Enrollment>(`/programs/enrollments/${id}`, { method: 'PATCH', body: patch }),
+  leaveProgram: (id: string) =>
+    request<{ ok: boolean }>(`/programs/enrollments/${id}`, { method: 'DELETE' }),
+
+  // ── Phase 2: coaching marketplace ──
+  listCoaches: () => request<Coach[]>('/coaches', { auth: false }),
+  myCoaching: () => request<{ booking: CoachBooking | null }>('/coaches/mine'),
+  bookCoach: (coachId: string, note?: string) =>
+    request<CoachBooking>(`/coaches/${coachId}/book`, { method: 'POST', body: { note } }),
+  endCoaching: (bookingId: string) =>
+    request<{ ok: boolean }>(`/coaches/booking/${bookingId}`, { method: 'DELETE' }),
+
+  // ── Phase 2: corporate wellness ──
+  myCompany: () => request<{ company: Company | null }>('/company/me'),
+  joinCompany: (code: string) =>
+    request<{ company: Company }>('/company/join', { method: 'POST', body: { code } }),
+  leaveCompany: () => request<{ ok: boolean }>('/company/leave', { method: 'POST' }),
 
   // AI coach
   coachChat: (message: string, history?: { role: 'user' | 'assistant'; content: string }[]) =>
