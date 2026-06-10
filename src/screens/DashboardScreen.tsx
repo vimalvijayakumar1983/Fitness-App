@@ -12,6 +12,9 @@ import { MacroSummary } from '@/components/MacroSummary';
 import { EntryRow } from '@/components/EntryRow';
 import { AccountModal } from '@/components/AccountModal';
 import { CoachModal } from '@/components/CoachModal';
+import { WeightModal } from '@/components/WeightModal';
+import { HealthAssessmentModal } from '@/components/HealthAssessmentModal';
+import { computeMetabolicScore } from '@/utils/health';
 import { useData } from '@/context/DataContext';
 import { useAuth } from '@/context/AuthContext';
 import { colors, gradients, hexA, glow, radius, shadow, spacing, type } from '@/theme/colors';
@@ -60,6 +63,10 @@ export function DashboardScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [accountOpen, setAccountOpen] = useState(false);
   const [coachOpen, setCoachOpen] = useState(false);
+  const [weightOpen, setWeightOpen] = useState(false);
+  const [assessmentOpen, setAssessmentOpen] = useState(false);
+  const metabolic = computeMetabolicScore(data.profile, data.assessment);
+  const latestWeight = data.weights[0]?.weightKg ?? data.profile.weightKg;
   const today = todayISO();
   const s = summarizeDay(data, today);
   const macros = summarizeMacros(data, today);
@@ -212,6 +219,29 @@ export function DashboardScreen() {
         />
       </Card>
 
+      {/* Metabolic health + weight */}
+      <View style={styles.grid}>
+        <Pressable style={styles.healthTile} onPress={() => setAssessmentOpen(true)}>
+          <Text style={styles.tileLabel}>Metabolic health</Text>
+          {data.assessment ? (
+            <>
+              <Text style={[styles.tileScore, { color: colors.primary }]}>{metabolic.score}</Text>
+              <Text style={styles.tileSub}>{metabolic.category}{metabolic.bmi != null ? ` · BMI ${metabolic.bmi}` : ''}</Text>
+            </>
+          ) : (
+            <>
+              <Text style={styles.tileScore}>—</Text>
+              <Text style={[styles.tileSub, { color: colors.primary }]}>Take assessment ›</Text>
+            </>
+          )}
+        </Pressable>
+        <Pressable style={styles.healthTile} onPress={() => setWeightOpen(true)}>
+          <Text style={styles.tileLabel}>Weight</Text>
+          <Text style={styles.tileScore}>{latestWeight}<Text style={styles.tileUnit}> kg</Text></Text>
+          <Text style={[styles.tileSub, { color: colors.primary }]}>Log weight ›</Text>
+        </Pressable>
+      </View>
+
       {/* Quick metrics */}
       <View style={styles.grid}>
         <StatTile emoji="🍽️" label="Calories in" value={`${s.caloriesIn}`} unit="kcal" gradient={gradients.meal} />
@@ -285,6 +315,8 @@ export function DashboardScreen() {
 
       <AccountModal visible={accountOpen} onClose={() => setAccountOpen(false)} />
       <CoachModal visible={coachOpen} onClose={() => setCoachOpen(false)} />
+      <WeightModal visible={weightOpen} onClose={() => setWeightOpen(false)} />
+      <HealthAssessmentModal visible={assessmentOpen} onClose={() => setAssessmentOpen(false)} />
     </ScreenContainer>
   );
 }
@@ -371,6 +403,12 @@ const styles = StyleSheet.create({
   hint: { ...type.caption, marginTop: spacing.sm, lineHeight: 19 },
 
   timelineTitle: { marginTop: spacing.sm, marginBottom: spacing.md },
+
+  healthTile: { flexGrow: 1, flexBasis: '47%', backgroundColor: colors.surface, borderRadius: radius.lg, borderWidth: 1, borderColor: colors.border, padding: spacing.lg, ...shadow.sm },
+  tileLabel: { ...type.label, color: colors.textMuted },
+  tileScore: { ...type.metric, marginTop: spacing.sm },
+  tileUnit: { ...type.body, color: colors.textSecondary },
+  tileSub: { ...type.caption, marginTop: 2 },
 
   coachCard: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, borderRadius: radius.xl, padding: spacing.xl, marginTop: spacing.md },
   coachEmoji: { fontSize: 26 },

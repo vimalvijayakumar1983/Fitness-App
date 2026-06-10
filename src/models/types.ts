@@ -215,6 +215,48 @@ export interface DayPlan {
   meals: PlannedMeal[];
 }
 
+/** A body-weight measurement. */
+export interface WeightEntry {
+  id: string;
+  date: ISODateString;
+  loggedAt: ISODateTimeString;
+  weightKg: number;
+  bodyFatPct?: number;
+}
+
+/** Lifestyle/risk health assessment driving the metabolic score. */
+export interface HealthAssessment {
+  completedAt: ISODateTimeString;
+  smokes: boolean;
+  familyDiabetes: boolean;
+  familyHeart: boolean;
+  waistCm?: number;
+  activityDaysPerWeek: number; // 0..7
+  sleepQuality: 1 | 2 | 3 | 4 | 5;
+  stressLevel: 1 | 2 | 3 | 4 | 5;
+  dietQuality: 1 | 2 | 3 | 4 | 5;
+  alcoholPerWeek: number; // drinks/week
+}
+
+/** A single extracted lab marker. */
+export interface LabMarker {
+  name: string;
+  value: string;
+  unit?: string;
+  range?: string;
+  status: 'low' | 'normal' | 'high' | 'unknown';
+  note?: string;
+}
+
+/** An analyzed lab report. */
+export interface LabReport {
+  id: string;
+  date: ISODateString;
+  createdAt: ISODateTimeString;
+  summary: string;
+  markers: LabMarker[];
+}
+
 export interface AppData {
   meals: MealEntry[];
   exercises: ExerciseEntry[];
@@ -230,6 +272,12 @@ export interface AppData {
   customExercises: ExerciseDef[];
   /** The currently generated meal plan, if any. */
   plan: DayPlan | null;
+  /** Body-weight history (newest first). */
+  weights: WeightEntry[];
+  /** The latest completed health assessment, if any. */
+  assessment: HealthAssessment | null;
+  /** Analyzed lab reports (newest first). */
+  labs: LabReport[];
 }
 
 export const DEFAULT_PROFILE: Profile = {
@@ -259,4 +307,7 @@ export const emptyAppData: AppData = {
   customFoods: [],
   customExercises: [],
   plan: null,
+  weights: [],
+  assessment: null,
+  labs: [],
 };

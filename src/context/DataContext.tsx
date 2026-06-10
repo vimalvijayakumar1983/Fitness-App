@@ -18,6 +18,9 @@ import {
   MoodEntry,
   Profile,
   SleepEntry,
+  WeightEntry,
+  HealthAssessment,
+  LabReport,
 } from '@/models/types';
 import { loadAppData, saveAppData } from '@/services/storage';
 import { getHealthProvider } from '@/services/health/healthService';
@@ -54,9 +57,12 @@ interface DataContextValue {
   upsertCustomExercise: (exercise: ExerciseDef) => void;
   deleteCustomExercise: (exerciseId: string) => void;
   setPlan: (plan: DayPlan | null) => void;
+  addWeight: (weightKg: number, bodyFatPct?: number) => void;
+  setAssessment: (a: HealthAssessment) => void;
+  addLab: (report: Omit<LabReport, 'id' | 'createdAt'>) => void;
 
   removeEntry: (
-    kind: 'meals' | 'exercises' | 'moods' | 'sleep' | 'water',
+    kind: 'meals' | 'exercises' | 'moods' | 'sleep' | 'water' | 'weights' | 'labs',
     id: string,
   ) => void;
 
@@ -273,8 +279,30 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     setData((prev) => ({ ...prev, plan }));
   }, []);
 
+  const addWeight = useCallback((weightKg: number, bodyFatPct?: number) => {
+    setData((prev) => ({
+      ...prev,
+      weights: [
+        { id: makeId(), date: todayISO(), loggedAt: new Date().toISOString(), weightKg, bodyFatPct },
+        ...prev.weights,
+      ],
+      profile: { ...prev.profile, weightKg },
+    }));
+  }, []);
+
+  const setAssessment = useCallback((a: HealthAssessment) => {
+    setData((prev) => ({ ...prev, assessment: a }));
+  }, []);
+
+  const addLab = useCallback((report: Omit<LabReport, 'id' | 'createdAt'>) => {
+    setData((prev) => ({
+      ...prev,
+      labs: [{ ...report, id: makeId(), createdAt: new Date().toISOString() }, ...prev.labs],
+    }));
+  }, []);
+
   const removeEntry = useCallback(
-    (kind: 'meals' | 'exercises' | 'moods' | 'sleep' | 'water', id: string) => {
+    (kind: 'meals' | 'exercises' | 'moods' | 'sleep' | 'water' | 'weights' | 'labs', id: string) => {
       setData((prev) => ({
         ...prev,
         [kind]: prev[kind].filter((entry) => entry.id !== id),
@@ -334,6 +362,9 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       upsertCustomExercise,
       deleteCustomExercise,
       setPlan,
+      addWeight,
+      setAssessment,
+      addLab,
       removeEntry,
       syncHealthData,
     }),
@@ -357,6 +388,9 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       upsertCustomExercise,
       deleteCustomExercise,
       setPlan,
+      addWeight,
+      setAssessment,
+      addLab,
       removeEntry,
       syncHealthData,
     ],
