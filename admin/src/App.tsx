@@ -3,6 +3,7 @@ import { api, auth, Me } from './api';
 import { CustomersView } from './Customers';
 import { PlansView } from './Plans';
 import { ReportsView } from './Reports';
+import { RevenueView } from './Revenue';
 import { PricingView } from './Pricing';
 
 type FieldType = 'text' | 'number' | 'select' | 'tags' | 'lines' | 'ingredients';
@@ -287,6 +288,7 @@ export function App() {
         <div className="brand">🥗 Admin</div>
         <nav>
           <button className={tab === 'overview' ? 'active' : ''} onClick={() => setTab('overview')}>📊 Overview</button>
+          <button className={tab === 'revenue' ? 'active' : ''} onClick={() => setTab('revenue')}>💰 Revenue</button>
           <div className="nav-sep">CRM</div>
           <button className={tab === 'customers' ? 'active' : ''} onClick={() => setTab('customers')}>Customers</button>
           <button className={tab === 'plans' ? 'active' : ''} onClick={() => setTab('plans')}>Plans</button>
@@ -303,6 +305,7 @@ export function App() {
       </aside>
       <main className="content">
         {tab === 'overview' ? <ReportsView />
+          : tab === 'revenue' ? <RevenueView />
           : tab === 'pricing' ? <PricingView />
           : tab === 'customers' ? <CustomersView />
           : tab === 'plans' ? <PlansView />

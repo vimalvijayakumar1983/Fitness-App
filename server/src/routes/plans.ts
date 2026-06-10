@@ -302,6 +302,52 @@ adminRouter.get('/cohorts', (_req: Request, res: Response) => {
   res.json({ weeks: N, cohorts });
 });
 
+// ───────────────────────── Revenue report ─────────────────────────
+adminRouter.get('/revenue', (_req: Request, res: Response) => {
+  const pr = getPricing();
+  const pPrem = pr.premium.month.usd / 100;
+  const pCoach = pr.coached.month.usd / 100;
+  const price = (plan: string) => (plan === 'coached' ? pCoach : pPrem);
+  const WEEK = 7 * 864e5;
+
+  const subs = db.prepare('SELECT plan, status, updated_at FROM subscriptions').all() as
+    { plan: string; status: string; updated_at: string }[];
+  const isActive = (s: { plan: string; status: string }) =>
+    (s.plan === 'premium' || s.plan === 'coached') && (s.status === 'active' || s.status === 'trialing');
+
+  const active = subs.filter(isActive);
+  const premium = active.filter((s) => s.plan === 'premium').length;
+  const coached = active.filter((s) => s.plan === 'coached').length;
+  const byPlan = { premium: Math.round(premium * pPrem), coached: Math.round(coached * pCoach) };
+  const mrr = byPlan.premium + byPlan.coached;
+  const arr = mrr * 12;
+  const paying = premium + coached;
+  const arpu = paying ? Math.round((mrr / paying) * 100) / 100 : 0;
+
+  // MRR movement over the last 30 days.
+  const since = Date.now() - 30 * 864e5;
+  let newMrr = 0;
+  let churnedMrr = 0;
+  for (const s of subs) {
+    if (Date.parse(s.updated_at) < since) continue;
+    if (isActive(s)) newMrr += price(s.plan);
+    else if (s.status === 'canceled' && s.plan !== 'free') churnedMrr += price(s.plan);
+  }
+  newMrr = Math.round(newMrr);
+  churnedMrr = Math.round(churnedMrr);
+
+  // MRR over the last 12 weeks (active subs attributed from their start).
+  const mrrSeries: { label: string; mrr: number }[] = [];
+  for (let w = 11; w >= 0; w--) {
+    const end = Date.now() - w * WEEK;
+    let m = 0;
+    for (const s of active) if (Date.parse(s.updated_at) <= end) m += price(s.plan);
+    mrrSeries.push({ label: new Date(end).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }), mrr: Math.round(m) });
+  }
+
+  res.json({ mrr, arr, arpu, paying, byPlan, movement: { newMrr, churnedMrr, netMrr: newMrr - churnedMrr }, mrrSeries });
+});
+
 // ───────────────────── Customer-facing: my plan ─────────────────────
 mePlanRouter.get('/plan', (req: AuthedRequest, res: Response) => {
   const row = db.prepare('SELECT * FROM customer_plans WHERE user_id = ?').get(req.userId) as any;
