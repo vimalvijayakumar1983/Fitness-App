@@ -14,6 +14,7 @@ import { contentRouter } from './routes/content';
 import { syncRouter } from './routes/sync';
 import { adminRouter, mePlanRouter } from './routes/plans';
 import { billingRouter, billingWebhook } from './routes/billing';
+import { labsRouter } from './routes/labs';
 
 const app = express();
 
@@ -56,6 +57,7 @@ app.use('/api/sync', syncRouter);
 app.use('/api/admin', adminRouter);
 app.use('/api/me', mePlanRouter);
 app.use('/api/billing', billingRouter);
+app.use('/api/labs', labsRouter);
 app.use('/api/goals', goalsRouter);
 app.use('/api/foods', foodsRouter);
 app.use('/api/analytics', analyticsRouter);

@@ -14,6 +14,7 @@ import { AccountModal } from '@/components/AccountModal';
 import { CoachModal } from '@/components/CoachModal';
 import { WeightModal } from '@/components/WeightModal';
 import { HealthAssessmentModal } from '@/components/HealthAssessmentModal';
+import { LabsModal } from '@/components/LabsModal';
 import { computeMetabolicScore } from '@/utils/health';
 import { useData } from '@/context/DataContext';
 import { useAuth } from '@/context/AuthContext';
@@ -65,6 +66,7 @@ export function DashboardScreen() {
   const [coachOpen, setCoachOpen] = useState(false);
   const [weightOpen, setWeightOpen] = useState(false);
   const [assessmentOpen, setAssessmentOpen] = useState(false);
+  const [labsOpen, setLabsOpen] = useState(false);
   const metabolic = computeMetabolicScore(data.profile, data.assessment);
   const latestWeight = data.weights[0]?.weightKg ?? data.profile.weightKg;
   const today = todayISO();
@@ -301,6 +303,18 @@ export function DashboardScreen() {
         ))
       )}
 
+      {/* AI Lab analysis */}
+      <Pressable onPress={() => setLabsOpen(true)}>
+        <LinearGradient colors={gradients.water as unknown as string[]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.coachCard}>
+          <Text style={styles.coachEmoji}>🧪</Text>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.coachTitle}>Analyze a lab report</Text>
+            <Text style={styles.coachSub}>AI reads your blood panel & flags risks</Text>
+          </View>
+          <Text style={styles.coachArrow}>›</Text>
+        </LinearGradient>
+      </Pressable>
+
       {/* AI Coach */}
       <Pressable onPress={() => setCoachOpen(true)}>
         <LinearGradient colors={gradients.primary as unknown as string[]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.coachCard}>
@@ -317,6 +331,7 @@ export function DashboardScreen() {
       <CoachModal visible={coachOpen} onClose={() => setCoachOpen(false)} />
       <WeightModal visible={weightOpen} onClose={() => setWeightOpen(false)} />
       <HealthAssessmentModal visible={assessmentOpen} onClose={() => setAssessmentOpen(false)} />
+      <LabsModal visible={labsOpen} onClose={() => setLabsOpen(false)} />
     </ScreenContainer>
   );
 }

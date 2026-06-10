@@ -6,7 +6,7 @@
  * food search, AI coach). Point `API_BASE_URL` at your running server.
  */
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import type { ExerciseDef, Food, Recipe } from '@/models/types';
+import type { ExerciseDef, Food, Recipe, LabMarker } from '@/models/types';
 
 /**
  * Base URL comes from EXPO_PUBLIC_API_URL (inlined at build time). When unset,
@@ -151,6 +151,13 @@ export const api = {
 
   // Coach-assigned plan (read-only for the customer)
   getMyPlan: () => request<{ plan: AssignedPlan | null }>('/me/plan'),
+
+  // AI lab report analysis
+  analyzeLab: (imageBase64: string, mediaType: string) =>
+    request<{ summary: string; markers: LabMarker[]; offline?: boolean }>('/labs/analyze', {
+      method: 'POST',
+      body: { imageBase64, mediaType },
+    }),
 
   // Billing / subscription
   getSubscription: () => request<Subscription>('/billing/subscription'),
