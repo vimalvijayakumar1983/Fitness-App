@@ -130,8 +130,8 @@ function Login({ onDone }: { onDone: (me: Me['user']) => void }) {
   return (
     <div className="login-wrap">
       <form className="card login" onSubmit={submit}>
-        <div className="brand">🥗 Fitness Admin</div>
-        <p className="muted">Sign in to manage content & plans.</p>
+        <div className="brand">🌿 Al Zaabi Health</div>
+        <p className="muted">Admin · preventive & metabolic health platform</p>
         <input placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} />
         <input placeholder="Password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} />
         {err ? <div className="err">{err}</div> : null}
@@ -285,7 +285,7 @@ export function App() {
   return (
     <div className="shell">
       <aside className="sidebar">
-        <div className="brand">🥗 Admin</div>
+        <div className="brand">🌿 Al Zaabi Health</div>
         <nav>
           <button className={tab === 'overview' ? 'active' : ''} onClick={() => setTab('overview')}>📊 Overview</button>
           <button className={tab === 'revenue' ? 'active' : ''} onClick={() => setTab('revenue')}>💰 Revenue</button>

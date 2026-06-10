@@ -11,6 +11,7 @@ import { BarChart } from '@/components/BarChart';
 import { MacroSummary } from '@/components/MacroSummary';
 import { EntryRow } from '@/components/EntryRow';
 import { AccountModal } from '@/components/AccountModal';
+import { CoachModal } from '@/components/CoachModal';
 import { useData } from '@/context/DataContext';
 import { useAuth } from '@/context/AuthContext';
 import { colors, gradients, hexA, glow, radius, shadow, spacing, type } from '@/theme/colors';
@@ -58,6 +59,7 @@ export function DashboardScreen() {
   const { user } = useAuth();
   const [refreshing, setRefreshing] = useState(false);
   const [accountOpen, setAccountOpen] = useState(false);
+  const [coachOpen, setCoachOpen] = useState(false);
   const today = todayISO();
   const s = summarizeDay(data, today);
   const macros = summarizeMacros(data, today);
@@ -269,7 +271,20 @@ export function DashboardScreen() {
         ))
       )}
 
+      {/* AI Coach */}
+      <Pressable onPress={() => setCoachOpen(true)}>
+        <LinearGradient colors={gradients.primary as unknown as string[]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.coachCard}>
+          <Text style={styles.coachEmoji}>💬</Text>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.coachTitle}>Ask your AI Coach</Text>
+            <Text style={styles.coachSub}>Personalized guidance from your data</Text>
+          </View>
+          <Text style={styles.coachArrow}>›</Text>
+        </LinearGradient>
+      </Pressable>
+
       <AccountModal visible={accountOpen} onClose={() => setAccountOpen(false)} />
+      <CoachModal visible={coachOpen} onClose={() => setCoachOpen(false)} />
     </ScreenContainer>
   );
 }
@@ -356,4 +371,10 @@ const styles = StyleSheet.create({
   hint: { ...type.caption, marginTop: spacing.sm, lineHeight: 19 },
 
   timelineTitle: { marginTop: spacing.sm, marginBottom: spacing.md },
+
+  coachCard: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, borderRadius: radius.xl, padding: spacing.xl, marginTop: spacing.md },
+  coachEmoji: { fontSize: 26 },
+  coachTitle: { ...type.sectionTitle, color: '#fff' },
+  coachSub: { ...type.caption, color: 'rgba(255,255,255,0.85)', marginTop: 2 },
+  coachArrow: { color: '#fff', fontSize: 24 },
 });

@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "Fitness App",
+    "name": "Al Zaabi Health",
     "slug": "fitness-app",
     "version": "0.1.0",
     "orientation": "portrait",
@@ -8,7 +8,7 @@
     "scheme": "fitnessapp",
     "splash": {
       "resizeMode": "contain",
-      "backgroundColor": "#0E7C66"
+      "backgroundColor": "#23A455"
     },
     "assetBundlePatterns": ["**/*"],
     "ios": {

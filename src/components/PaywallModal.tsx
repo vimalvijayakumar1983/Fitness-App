@@ -82,7 +82,7 @@ export function PaywallModal({ visible, onClose }: Props) {
           <View style={styles.header}>
             <View style={{ flex: 1 }}>
               <Text style={styles.eyebrow}>Go Premium</Text>
-              <Text style={type.title}>Unlock your full plan</Text>
+              <Text style={type.title}>Unlock your health plan</Text>
             </View>
             <Pressable onPress={onClose} hitSlop={10} style={styles.closeBtn}>
               <Text style={styles.closeText}>✕</Text>
