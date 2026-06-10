@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { StyleSheet, View, Text } from 'react-native';
+import { StyleSheet, View, Text, Pressable } from 'react-native';
 import { ScreenContainer } from '@/components/ScreenContainer';
 import { Card } from '@/components/Card';
 import { PrimaryButton } from '@/components/PrimaryButton';
@@ -10,7 +10,7 @@ import { SectionHeader } from '@/components/SectionHeader';
 import { IconBadge } from '@/components/IconBadge';
 import { ExercisePickerModal } from '@/components/ExercisePickerModal';
 import { useData } from '@/context/DataContext';
-import { colors, gradients, spacing, type } from '@/theme/colors';
+import { colors, gradients, radius, spacing, type } from '@/theme/colors';
 import { activeProviderName } from '@/services/health/healthService';
 import { estimateCalories } from '@/data/exercises';
 import { exerciseEmojiName } from '@/utils/images';
@@ -73,6 +73,24 @@ export function ExerciseScreen() {
           loading={syncing}
           style={{ margin: spacing.lg, marginTop: 0 }}
         />
+      </Card>
+
+      {/* Wearables / devices */}
+      <Card title="Connect a device">
+        {[
+          { name: 'Apple Health', emoji: '🍎' },
+          { name: 'Google Fit', emoji: '🟢' },
+          { name: 'Fitbit', emoji: '⌚' },
+        ].map((d) => (
+          <View key={d.name} style={styles.deviceRow}>
+            <Text style={styles.deviceEmoji}>{d.emoji}</Text>
+            <Text style={styles.deviceName}>{d.name}</Text>
+            <Pressable style={styles.connectBtn} onPress={onSync}>
+              <Text style={styles.connectText}>{syncing ? 'Syncing…' : 'Connect'}</Text>
+            </Pressable>
+          </View>
+        ))}
+        <Text style={styles.deviceNote}>Live device sync (Apple Health / Health Connect / Fitbit) activates in the mobile app. On web, "Connect" pulls demo data.</Text>
       </Card>
 
       <Card title="Log a workout">
@@ -172,6 +190,12 @@ const styles = StyleSheet.create({
   syncCard: { overflow: 'hidden' },
   syncRow: { flexDirection: 'row', alignItems: 'center', padding: spacing.lg },
   syncTitle: { ...type.body, fontWeight: '700' },
+  deviceRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: colors.border },
+  deviceEmoji: { fontSize: 22, marginRight: spacing.md },
+  deviceName: { ...type.body, fontWeight: '600', flex: 1 },
+  connectBtn: { backgroundColor: colors.primarySoft, borderRadius: radius.pill, paddingVertical: 7, paddingHorizontal: 16, borderWidth: 1, borderColor: colors.primary },
+  connectText: { color: colors.primaryDark, fontWeight: '700', fontSize: 13 },
+  deviceNote: { ...type.caption, marginTop: spacing.md, lineHeight: 18 },
   divider: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, marginVertical: spacing.lg },
   line: { flex: 1, height: 1, backgroundColor: colors.border },
   dividerText: { ...type.caption, color: colors.textMuted },
