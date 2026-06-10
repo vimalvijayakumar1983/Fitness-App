@@ -18,6 +18,7 @@ import { LabsModal } from '@/components/LabsModal';
 import { LongevityModal } from '@/components/LongevityModal';
 import { GlucoseModal } from '@/components/GlucoseModal';
 import { FamilyModal } from '@/components/FamilyModal';
+import { WeekReviewModal } from '@/components/WeekReviewModal';
 import { computeMetabolicScore } from '@/utils/health';
 import { biologicalAge } from '@/utils/longevity';
 import { useData } from '@/context/DataContext';
@@ -74,6 +75,7 @@ export function DashboardScreen() {
   const [longevityOpen, setLongevityOpen] = useState(false);
   const [glucoseOpen, setGlucoseOpen] = useState(false);
   const [familyOpen, setFamilyOpen] = useState(false);
+  const [reviewOpen, setReviewOpen] = useState(false);
   const metabolic = computeMetabolicScore(data.profile, data.assessment);
   const bio = biologicalAge(data.profile, data.assessment, data);
   const latestGlucose = data.glucose[0]?.mgDl ?? null;
@@ -375,6 +377,18 @@ export function DashboardScreen() {
         </LinearGradient>
       </Pressable>
 
+      {/* Your week in review */}
+      <Pressable onPress={() => setReviewOpen(true)}>
+        <LinearGradient colors={gradients.mind as unknown as string[]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.coachCard}>
+          <Text style={styles.coachEmoji}>📈</Text>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.coachTitle}>Your week in review</Text>
+            <Text style={styles.coachSub}>Trends, wins & insights from your data</Text>
+          </View>
+          <Text style={styles.coachArrow}>›</Text>
+        </LinearGradient>
+      </Pressable>
+
       {/* AI Lab analysis */}
       <Pressable onPress={() => setLabsOpen(true)}>
         <LinearGradient colors={gradients.water as unknown as string[]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.coachCard}>
@@ -407,6 +421,7 @@ export function DashboardScreen() {
       <LongevityModal visible={longevityOpen} onClose={() => setLongevityOpen(false)} onTakeAssessment={() => setAssessmentOpen(true)} />
       <GlucoseModal visible={glucoseOpen} onClose={() => setGlucoseOpen(false)} />
       <FamilyModal visible={familyOpen} onClose={() => setFamilyOpen(false)} />
+      <WeekReviewModal visible={reviewOpen} onClose={() => setReviewOpen(false)} />
     </ScreenContainer>
   );
 }
