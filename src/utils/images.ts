@@ -1,14 +1,13 @@
 import type { ExerciseDef, Food, Recipe } from '@/models/types';
 
 /**
- * Item imagery. We don't ship a photo for every item, so foods render an
- * accurate emoji tile derived from the item name (always correct), and a real
- * photo is shown only when an admin explicitly attaches an `imageUrl` in the
- * CMS. (Exercises/recipes still use the keyword service below.)
+ * Item imagery. We don't ship a photo for every item, so foods and exercises
+ * render an accurate emoji tile derived from the item (always correct). A real
+ * photo is shown only when an admin attaches an `imageUrl` via the CMS.
  */
 
-// Name keyword → emoji. Ordered so specific terms win over generic substrings
-// (e.g. "peanut" before "pea", "sweet potato" before "potato").
+// ── Foods ────────────────────────────────────────────────────────────
+// Name keyword → emoji, ordered so specific terms win over generic substrings.
 const FOOD_EMOJI: [string, string][] = [
   ['chicken', '🍗'], ['turkey', '🍗'], ['bacon', '🥓'], ['steak', '🥩'], ['beef', '🥩'], ['pork', '🥩'],
   ['salmon', '🐟'], ['tuna', '🐟'], ['cod', '🐟'], ['shrimp', '🦐'], ['fish', '🐟'],
@@ -30,58 +29,52 @@ const FOOD_EMOJI: [string, string][] = [
   ['pizza', '🍕'], ['burger', '🍔'], ['taco', '🌮'], ['burrito', '🌯'], ['sushi', '🍣'], ['biryani', '🍛'], ['curry', '🍛'], ['dal', '🍛'], ['omelette', '🍳'], ['pancake', '🥞'], ['falafel', '🧆'], ['shawarma', '🌯'], ['wrap', '🌯'], ['salad', '🥗'], ['bowl', '🥗'],
 ];
 
-const CATEGORY_EMOJI: Record<Food['category'], string> = {
+const FOOD_CATEGORY_EMOJI: Record<Food['category'], string> = {
   protein: '🍗', carb: '🍚', veg: '🥦', fruit: '🍎', dairy: '🧀', fat: '🥑', drink: '🥤', snack: '🍫', meal: '🍽️',
 };
 
-function matchEmoji(name: string): string | undefined {
+// ── Exercises ────────────────────────────────────────────────────────
+const EXERCISE_EMOJI: [string, string][] = [
+  ['running', '🏃'], ['run', '🏃'], ['jog', '🏃'], ['sprint', '🏃'], ['walk', '🚶'], ['hiking', '🥾'],
+  ['cycling', '🚴'], ['bike', '🚴'], ['spin', '🚴'], ['rowing', '🚣'], ['swim', '🏊'], ['elliptical', '🏃'], ['stair', '🏃'], ['jump rope', '🪢'], ['hiit', '🔥'],
+  ['yoga', '🧘'], ['pilates', '🧘'], ['tai chi', '🧘'], ['stretch', '🤸'], ['foam roll', '🧘'],
+  ['boxing', '🥊'], ['martial', '🥋'], ['basketball', '🏀'], ['soccer', '⚽'], ['tennis', '🎾'], ['badminton', '🏸'], ['table tennis', '🏓'], ['volleyball', '🏐'], ['cricket', '🏏'], ['golf', '⛳'], ['dancing', '💃'], ['climbing', '🧗'], ['skiing', '⛷️'], ['skating', '⛸️'], ['surfing', '🏄'],
+  ['plank', '🧘'], ['crunch', '🤸'], ['sit-up', '🤸'], ['leg raise', '🤸'], ['mountain climber', '🧗'], ['burpee', '🤸'], ['push-up', '🤸'], ['pull-up', '🤸'], ['chin-up', '🤸'], ['dip', '🤸'], ['lunge', '🦵'], ['squat', '🦵'], ['calf', '🦵'], ['leg', '🦵'],
+  ['deadlift', '🏋️'], ['bench', '🏋️'], ['press', '🏋️'], ['curl', '💪'], ['row', '🏋️'], ['fly', '🏋️'], ['raise', '🏋️'], ['shrug', '🏋️'], ['extension', '🏋️'], ['pulldown', '🏋️'], ['thruster', '🏋️'], ['clean', '🏋️'], ['snatch', '🏋️'], ['swing', '🏋️'],
+];
+
+const EXERCISE_CATEGORY_EMOJI: Record<string, string> = {
+  strength: '🏋️', bodyweight: '🤸', cardio: '🏃', sports: '🏅', flexibility: '🧘',
+};
+
+function matchEmoji(name: string, table: [string, string][]): string | undefined {
   const n = name.toLowerCase();
-  for (const [k, e] of FOOD_EMOJI) if (n.includes(k)) return e;
+  for (const [k, e] of table) if (n.includes(k)) return e;
   return undefined;
 }
 
-/** Accurate emoji for a food (by name, then category). */
+// ── Public helpers ───────────────────────────────────────────────────
 export function foodEmoji(food: Food): string {
-  return matchEmoji(food.name) ?? CATEGORY_EMOJI[food.category] ?? '🍽️';
+  return matchEmoji(food.name, FOOD_EMOJI) ?? FOOD_CATEGORY_EMOJI[food.category] ?? '🍽️';
 }
-
-/** Emoji from a free-text food/meal name (for logged entries). */
 export function foodEmojiName(name: string, fallback = '🍽️'): string {
-  return matchEmoji(name) ?? fallback;
+  return matchEmoji(name, FOOD_EMOJI) ?? fallback;
 }
-
-/** Real photo only if the CMS provides one; otherwise empty → emoji tile. */
 export function foodImage(food: Food): string {
   return food.imageUrl || '';
 }
 
-// ── Exercises / recipes still use a keyword image service (fallback to emoji) ──
-function lock(id: string): number {
-  let h = 0;
-  for (let i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) % 100000;
-  return h;
+export function exerciseEmoji(ex: ExerciseDef): string {
+  return matchEmoji(ex.name, EXERCISE_EMOJI) ?? EXERCISE_CATEGORY_EMOJI[ex.category] ?? '🏋️';
 }
-function url(keyword: string, id: string, size = 200): string {
-  const kw = encodeURIComponent(keyword.trim() || 'food');
-  return `https://loremflickr.com/${size}/${size}/${kw}?lock=${lock(id)}`;
+export function exerciseEmojiName(name: string, fallback = '🏃'): string {
+  return matchEmoji(name, EXERCISE_EMOJI) ?? fallback;
 }
-function nameKeyword(name: string): string {
-  return name.split(',')[0].split(' ').slice(0, 2).join(' ');
+export function exerciseImage(ex: ExerciseDef): string {
+  return ex.imageUrl || '';
 }
 
-export function recipeImage(recipe: Recipe, size = 400): string {
-  return recipe.imageUrl || url(`${nameKeyword(recipe.name)},meal`, recipe.id, size);
-}
-
-export function keywordImage(keyword: string, id: string, suffix = 'food', size = 160): string {
-  return url(`${nameKeyword(keyword)},${suffix}`, id, size);
-}
-
-export function exerciseImage(ex: ExerciseDef, size = 200): string {
-  if (ex.imageUrl) return ex.imageUrl;
-  const kw =
-    ex.category === 'cardio' || ex.category === 'sports'
-      ? `${nameKeyword(ex.name)},fitness`
-      : `${ex.equipment ?? 'gym'},workout`;
-  return url(kw, ex.id, size);
+/** Recipes carry their own emoji; a real photo shows only if the CMS sets one. */
+export function recipeImage(recipe: Recipe, _size?: number): string {
+  return recipe.imageUrl || '';
 }

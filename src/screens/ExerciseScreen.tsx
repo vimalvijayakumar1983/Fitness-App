@@ -13,7 +13,7 @@ import { useData } from '@/context/DataContext';
 import { colors, gradients, spacing, type } from '@/theme/colors';
 import { activeProviderName } from '@/services/health/healthService';
 import { estimateCalories } from '@/data/exercises';
-import { keywordImage } from '@/utils/images';
+import { exerciseEmojiName } from '@/utils/images';
 import { formatDuration, formatTime, todayISO } from '@/utils/date';
 
 export function ExerciseScreen() {
@@ -134,9 +134,8 @@ export function ExerciseScreen() {
         todays.map((ex) => (
           <EntryRow
             key={ex.id}
-            emoji="🏃"
+            emoji={exerciseEmojiName(ex.activity)}
             gradient={gradients.exercise}
-            imageUrl={keywordImage(ex.activity, ex.id, 'fitness')}
             title={ex.activity}
             subtitle={[
               formatDuration(ex.durationMinutes),

@@ -32,7 +32,13 @@ export function RecipeDetailModal({ visible, recipe, onClose, onLog }: Props) {
           </View>
 
           <ScrollView contentContainerStyle={styles.body}>
-            <Image source={{ uri: recipeImage(recipe, 600) }} style={styles.banner} resizeMode="cover" />
+            {recipeImage(recipe) ? (
+              <Image source={{ uri: recipeImage(recipe) }} style={styles.banner} resizeMode="cover" />
+            ) : (
+              <LinearGradient colors={gradients.meal as unknown as string[]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={[styles.banner, styles.bannerEmoji]}>
+                <Text style={{ fontSize: 64 }}>{recipe.emoji}</Text>
+              </LinearGradient>
+            )}
             <View style={styles.macroCard}>
               <Macro label="Calories" value={`${recipe.calories}`} />
               <Macro label="Protein" value={`${recipe.protein}g`} color={colors.exercise} />
@@ -96,6 +102,7 @@ const styles = StyleSheet.create({
   closeText: { color: colors.textSecondary, fontSize: 16, fontWeight: '700' },
   body: { padding: spacing.lg, paddingTop: 0 },
   banner: { width: '100%', height: 170, borderRadius: radius.lg, backgroundColor: colors.surfaceMuted, marginBottom: spacing.lg },
+  bannerEmoji: { alignItems: 'center', justifyContent: 'center' },
   macroCard: { flexDirection: 'row', justifyContent: 'space-between', backgroundColor: colors.surface, borderRadius: radius.lg, borderWidth: 1, borderColor: colors.border, padding: spacing.lg },
   macro: { alignItems: 'center', flex: 1 },
   macroValue: { fontSize: 18, fontWeight: '700', color: colors.text },

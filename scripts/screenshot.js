@@ -83,22 +83,20 @@ async function typeInto(page, placeholder, value) {
   const page = await browser.newPage();
   page.on('pageerror', (e) => console.log('PAGEERROR:', e.message));
   await page.setViewport({ width: 400, height: 860, deviceScaleFactor: 2 });
+  // Seed a completed profile so the onboarding quiz + paywall don't block the flow.
+  const seed = JSON.stringify({
+    profile: {
+      name: 'You', goal: 'maintain', diet: 'balanced', calorieTarget: 2200,
+      macroTargets: { protein: 140, carbs: 220, fat: 70 }, waterGoalMl: 2500,
+      units: 'metric', weightKg: 70, heightCm: 170, age: 30, sex: 'male',
+      activityLevel: 1.45, onboarded: true,
+    },
+    meals: [], exercises: [], moods: [], sleep: [], water: [],
+    favoriteFoodIds: [], customFoods: [], customExercises: [], plan: null,
+  });
+  await page.evaluateOnNewDocument((s) => localStorage.setItem('fitnessapp:data:v1', s), seed);
   await page.goto(`http://localhost:${PORT}`, { waitUntil: 'networkidle0' });
   await sleep(2500);
-  // Dismiss the first-run onboarding quiz and the paywall it opens.
-  const forceClick = (t) =>
-    page.evaluate((txt) => {
-      const els = [...document.querySelectorAll('div,span,[role="button"]')];
-      const el = els.reverse().find((e) => e.textContent.trim() === txt);
-      if (el) { el.click(); return true; }
-      return false;
-    }, t);
-  await forceClick('Skip');
-  await sleep(1200);
-  await forceClick('✕'); // close paywall
-  await sleep(900);
-  await forceClick('✕'); // retry in case it mounted late
-  await sleep(800);
 
   const shot = async (name) => {
     await sleep(700);
@@ -109,11 +107,9 @@ async function typeInto(page, placeholder, value) {
   // 1. Dashboard (empty)
   await shot('1-dashboard-empty.png');
 
-  // 9. Plan — pick a goal (also generates a plan), capture the planner
+  // 9. Plan — capture the planner (avoid the premium-gated generate action)
   await clickByText(page, 'Plan');
   await sleep(900);
-  await clickByText(page, 'Build muscle');
-  await sleep(1000);
   await shot('9-plan.png');
   await clickByText(page, 'Today');
   await sleep(500);
