@@ -178,6 +178,10 @@ export const api = {
   // Coach-assigned plan (read-only for the customer)
   getMyPlan: () => request<{ plan: AssignedPlan | null }>('/me/plan'),
 
+  // Privacy: data export & account deletion
+  exportData: () => request<Record<string, unknown>>('/me/export'),
+  deleteAccount: () => request<{ ok: boolean }>('/me/account', { method: 'DELETE' }),
+
   // AI lab report analysis
   analyzeLab: (imageBase64: string, mediaType: string) =>
     request<{ summary: string; markers: LabMarker[]; offline?: boolean }>('/labs/analyze', {

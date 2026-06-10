@@ -354,3 +354,42 @@ mePlanRouter.get('/plan', (req: AuthedRequest, res: Response) => {
   if (!row) return res.json({ plan: null });
   res.json({ plan: { name: row.name, meals: JSON.parse(row.meals), assignedAt: row.assigned_at } });
 });
+
+// ───────────────── Privacy: data export & account deletion ─────────────────
+
+/** GET /api/me/export — full export of the signed-in user's data (GDPR). */
+mePlanRouter.get('/export', (req: AuthedRequest, res: Response) => {
+  const uid = req.userId;
+  const get = (sql: string) => db.prepare(sql).get(uid) as any;
+  const all = (sql: string) => db.prepare(sql).all(uid) as any[];
+
+  const user = get('SELECT id, email, name, role, created_at FROM users WHERE id = ?');
+  const state = get('SELECT data, updated_at FROM user_state WHERE user_id = ?');
+  const subscription = get('SELECT plan, status, provider, current_period_end, updated_at FROM subscriptions WHERE user_id = ?');
+  const enrollments = all('SELECT program_id, current_week, status, completed_tasks, started_at FROM program_enrollments WHERE user_id = ?');
+  const bookings = all('SELECT id, coach_id, status, note, created_at FROM coach_bookings WHERE user_id = ?');
+  const bookingIds = bookings.map((b) => b.id);
+  const messages = bookingIds.length
+    ? (db.prepare(`SELECT booking_id, sender, body, created_at FROM coach_messages WHERE booking_id IN (${bookingIds.map(() => '?').join(',')})`).all(...bookingIds) as any[])
+    : [];
+
+  res.setHeader('Content-Disposition', 'attachment; filename="alzaabi-health-export.json"');
+  res.json({
+    exportedAt: new Date().toISOString(),
+    account: user,
+    appData: state?.data ? JSON.parse(state.data) : null,
+    appDataUpdatedAt: state?.updated_at ?? null,
+    subscription: subscription ?? null,
+    programEnrollments: enrollments.map((e) => ({ ...e, completed_tasks: JSON.parse(e.completed_tasks || '[]') })),
+    coaching: { bookings, messages },
+  });
+});
+
+/** DELETE /api/me/account — permanently deletes the account and all data. */
+mePlanRouter.delete('/account', (req: AuthedRequest, res: Response) => {
+  // Foreign keys cascade: meals, exercises, state, subscriptions, enrollments,
+  // bookings (→ messages), customer_plans, etc. all removed with the user.
+  const r = db.prepare('DELETE FROM users WHERE id = ?').run(req.userId);
+  if (!r.changes) return res.status(404).json({ error: 'Account not found.' });
+  res.json({ ok: true });
+});

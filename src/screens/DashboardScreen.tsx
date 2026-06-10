@@ -23,6 +23,7 @@ import { computeMetabolicScore } from '@/utils/health';
 import { biologicalAge } from '@/utils/longevity';
 import { useData } from '@/context/DataContext';
 import { useAuth } from '@/context/AuthContext';
+import { useI18n } from '@/i18n';
 import { colors, gradients, hexA, glow, radius, shadow, spacing, type } from '@/theme/colors';
 import { summarizeDay, summarizeMacros, waterMl, computeReadiness, computeStreak } from '@/utils/selectors';
 import { formatDuration, todayISO, toISODate } from '@/utils/date';
@@ -32,11 +33,11 @@ const DAY_INITIALS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
 
 const GOALS = { caloriesOut: 500, steps: 10000, sleepMin: 480 };
 
-function greeting(): string {
+function greetingKey(): 'greeting.morning' | 'greeting.afternoon' | 'greeting.evening' {
   const h = new Date().getHours();
-  if (h < 12) return 'Good morning';
-  if (h < 18) return 'Good afternoon';
-  return 'Good evening';
+  if (h < 12) return 'greeting.morning';
+  if (h < 18) return 'greeting.afternoon';
+  return 'greeting.evening';
 }
 
 /** Steps for each of the last `n` days (oldest→newest) from logged exercises. */
@@ -66,6 +67,7 @@ function dayLabels(n: number): string[] {
 export function DashboardScreen() {
   const { data, syncHealthData } = useData();
   const { user } = useAuth();
+  const { t } = useI18n();
   const [refreshing, setRefreshing] = useState(false);
   const [accountOpen, setAccountOpen] = useState(false);
   const [coachOpen, setCoachOpen] = useState(false);
@@ -157,7 +159,7 @@ export function DashboardScreen() {
 
   return (
     <ScreenContainer
-      title={greeting()}
+      title={t(greetingKey())}
       subtitle={dateLabel}
       onRefresh={onRefresh}
       refreshing={refreshing}
@@ -196,7 +198,7 @@ export function DashboardScreen() {
 
       {/* Smart nudges — today's focus */}
       {topNudges.length > 0 ? (
-        <Card title="Today's focus">
+        <Card title={t('dash.todaysFocus')}>
           {topNudges.map((n, i) => (
             <Pressable key={i} onPress={n.onPress} style={[styles.nudgeRow, i > 0 && styles.nudgeBorder]}>
               <Text style={styles.nudgeEmoji}>{n.emoji}</Text>
@@ -208,7 +210,7 @@ export function DashboardScreen() {
       ) : null}
 
       {/* Activity rings */}
-      <Card title="Activity rings">
+      <Card title={t('dash.activityRings')}>
         <View style={styles.ringsCard}>
           <View style={styles.ringStack}>
             <ActivityRing
@@ -246,7 +248,7 @@ export function DashboardScreen() {
       </Card>
 
       {/* Nutrition macros */}
-      <Card title="Nutrition">
+      <Card title={t('dash.nutrition')}>
         <MacroSummary
           totals={macros}
           calorieTarget={data.profile.calorieTarget}
@@ -257,7 +259,7 @@ export function DashboardScreen() {
       {/* Metabolic health + weight */}
       <View style={styles.grid}>
         <Pressable style={styles.healthTile} onPress={() => setAssessmentOpen(true)}>
-          <Text style={styles.tileLabel}>Metabolic health</Text>
+          <Text style={styles.tileLabel}>{t('dash.metabolicHealth')}</Text>
           {data.assessment ? (
             <>
               <Text style={[styles.tileScore, { color: colors.primary }]}>{metabolic.score}</Text>
@@ -271,7 +273,7 @@ export function DashboardScreen() {
           )}
         </Pressable>
         <Pressable style={styles.healthTile} onPress={() => setWeightOpen(true)}>
-          <Text style={styles.tileLabel}>Weight</Text>
+          <Text style={styles.tileLabel}>{t('dash.weight')}</Text>
           <Text style={styles.tileScore}>{latestWeight}<Text style={styles.tileUnit}> kg</Text></Text>
           <Text style={[styles.tileSub, { color: colors.primary }]}>Log weight ›</Text>
         </Pressable>
@@ -281,7 +283,7 @@ export function DashboardScreen() {
       <Pressable onPress={() => setLongevityOpen(true)}>
         <LinearGradient colors={gradients.readiness as unknown as string[]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.longevityCard}>
           <View style={{ flex: 1 }}>
-            <Text style={styles.longevityLabel}>BIOLOGICAL AGE</Text>
+            <Text style={styles.longevityLabel}>{t('dash.biologicalAge').toUpperCase()}</Text>
             <Text style={styles.longevityAge}>{bio.bioAge.toFixed(0)}<Text style={styles.longevityChrono}> vs {bio.chronoAge}</Text></Text>
             <Text style={styles.longevitySub}>
               {Math.abs(bio.deltaYears) < 0.5 ? 'On par with your age' : `${Math.abs(bio.deltaYears).toFixed(1)} yrs ${bio.deltaYears <= 0 ? 'younger' : 'older'}`} · explore your digital twin ›
@@ -289,7 +291,7 @@ export function DashboardScreen() {
           </View>
           <View style={styles.longevityScoreBox}>
             <Text style={styles.longevityScore}>{bio.longevityScore}</Text>
-            <Text style={styles.longevityScoreLabel}>longevity</Text>
+            <Text style={styles.longevityScoreLabel}>{t('dash.longevity')}</Text>
           </View>
         </LinearGradient>
       </Pressable>
@@ -382,8 +384,8 @@ export function DashboardScreen() {
         <LinearGradient colors={gradients.mind as unknown as string[]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.coachCard}>
           <Text style={styles.coachEmoji}>📈</Text>
           <View style={{ flex: 1 }}>
-            <Text style={styles.coachTitle}>Your week in review</Text>
-            <Text style={styles.coachSub}>Trends, wins & insights from your data</Text>
+            <Text style={styles.coachTitle}>{t('dash.weekInReview')}</Text>
+            <Text style={styles.coachSub}>{t('dash.weekInReviewSub')}</Text>
           </View>
           <Text style={styles.coachArrow}>›</Text>
         </LinearGradient>

@@ -7,6 +7,8 @@ import {
 } from '@react-navigation/bottom-tabs';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors, radius, shadow, spacing } from '@/theme/colors';
+import { useI18n } from '@/i18n';
+import type { StringKey } from '@/i18n/strings';
 import { DashboardScreen } from '@/screens/DashboardScreen';
 import { MealsScreen } from '@/screens/MealsScreen';
 import { PlanScreen } from '@/screens/PlanScreen';
@@ -27,8 +29,14 @@ const META: Record<string, { icon: string; tint: string }> = {
   Sleep: { icon: '😴', tint: colors.sleep },
 };
 
+const NAV_KEY: Record<string, StringKey> = {
+  Today: 'nav.today', Meals: 'nav.meals', Plan: 'nav.plan', Care: 'nav.care',
+  Exercise: 'nav.exercise', Mind: 'nav.mind', Sleep: 'nav.sleep',
+};
+
 /** Floating, rounded tab bar with an active pill. */
 function FloatingTabBar({ state, navigation }: BottomTabBarProps) {
+  const { t } = useI18n();
   return (
     <SafeAreaView edges={['bottom']} style={styles.safe} pointerEvents="box-none">
       <View style={styles.bar}>
@@ -59,7 +67,7 @@ function FloatingTabBar({ state, navigation }: BottomTabBarProps) {
                   { color: focused ? meta.tint : colors.textMuted, fontWeight: focused ? '700' : '500' },
                 ]}
               >
-                {route.name}
+                {t(NAV_KEY[route.name] ?? 'nav.today', route.name)}
               </Text>
             </Pressable>
           );

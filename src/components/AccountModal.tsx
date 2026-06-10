@@ -7,8 +7,9 @@ import { PaywallModal } from './PaywallModal';
 import { useAuth } from '@/context/AuthContext';
 import { useData } from '@/context/DataContext';
 import { api, apiEnabled } from '@/services/api';
+import { useI18n } from '@/i18n';
 import { colors, gradients, radius, spacing, type } from '@/theme/colors';
-import { Linking, Platform } from 'react-native';
+import { Alert, Linking, Platform } from 'react-native';
 
 interface Props {
   visible: boolean;
@@ -19,6 +20,7 @@ interface Props {
 export function AccountModal({ visible, onClose }: Props) {
   const { user, login, register, logout } = useAuth();
   const { syncing, subscription, isPremium, refreshSubscription } = useData();
+  const { lang, setLang, t } = useI18n();
   const [paywallOpen, setPaywallOpen] = useState(false);
   const [mode, setMode] = useState<'login' | 'register' | 'forgot' | 'reset'>('login');
   const [name, setName] = useState('');
@@ -79,6 +81,32 @@ export function AccountModal({ visible, onClose }: Props) {
       const r = await api.billingPortal();
       if (r.url) { if (Platform.OS === 'web') window.open(r.url, '_blank'); else Linking.openURL(r.url); }
     } catch { /* portal only in Stripe mode */ }
+  };
+
+  const exportData = async () => {
+    try {
+      const data = await api.exportData();
+      if (Platform.OS === 'web' && typeof document !== 'undefined') {
+        const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url; a.download = 'alzaabi-health-export.json'; a.click();
+        URL.revokeObjectURL(url);
+      } else {
+        setInfo('Your data export was generated. Use the web app to download the file.');
+      }
+    } catch (e: any) { setErr(e.message || 'Export failed.'); }
+  };
+
+  const deleteAccount = async () => {
+    const go = async () => {
+      try { await api.deleteAccount(); await logout(); } catch (e: any) { setErr(e.message || 'Could not delete account.'); }
+    };
+    if (Platform.OS === 'web') { if (typeof confirm !== 'undefined' && confirm(t('account.deleteConfirm'))) await go(); }
+    else Alert.alert('Delete account', t('account.deleteConfirm'), [
+      { text: t('common.cancel'), style: 'cancel' },
+      { text: t('account.deleteAccount'), style: 'destructive', onPress: go },
+    ]);
   };
 
   return (
@@ -142,8 +170,29 @@ export function AccountModal({ visible, onClose }: Props) {
                   )}
                 </View>
 
-                <Text style={styles.note}>Your meals, workouts, and plan sync across every device you sign in on.</Text>
-                <PrimaryButton label="Sign out" onPress={logout} variant="soft" color={colors.danger} style={{ marginTop: spacing.lg }} />
+                {/* Language */}
+                <View style={[styles.card, { marginTop: spacing.md }]}>
+                  <Text style={styles.label}>{t('account.language')}</Text>
+                  <View style={styles.langRow}>
+                    {(['en', 'ar'] as const).map((l) => (
+                      <Pressable key={l} onPress={() => setLang(l)} style={[styles.langChip, lang === l && styles.langChipOn]}>
+                        <Text style={[styles.langText, lang === l && styles.langTextOn]}>{l === 'en' ? 'English' : 'العربية'}</Text>
+                      </Pressable>
+                    ))}
+                  </View>
+                </View>
+
+                {/* Privacy & data */}
+                <View style={[styles.card, { marginTop: spacing.md }]}>
+                  <Text style={styles.label}>{t('account.privacy')}</Text>
+                  <Text style={[styles.note, { marginTop: spacing.sm }]}>{t('account.privacyNote')}</Text>
+                  <View style={styles.subActions}>
+                    <PrimaryButton label={t('account.exportData')} onPress={exportData} variant="soft" color={colors.primary} style={{ flex: 1 }} />
+                    <PrimaryButton label={t('account.deleteAccount')} onPress={deleteAccount} variant="soft" color={colors.danger} style={{ flex: 1 }} />
+                  </View>
+                </View>
+
+                <PrimaryButton label={t('account.signOut')} onPress={logout} variant="soft" color={colors.danger} style={{ marginTop: spacing.lg }} />
                 <PaywallModal visible={paywallOpen} onClose={() => setPaywallOpen(false)} />
               </>
             ) : mode === 'forgot' ? (
@@ -215,6 +264,11 @@ const styles = StyleSheet.create({
   syncText: { ...type.caption, color: colors.textSecondary },
   note: { ...type.caption, marginTop: spacing.lg, lineHeight: 19 },
   subActions: { flexDirection: 'row', gap: spacing.sm, marginTop: spacing.md },
+  langRow: { flexDirection: 'row', gap: spacing.sm, marginTop: spacing.md },
+  langChip: { flex: 1, alignItems: 'center', paddingVertical: 10, borderRadius: radius.md, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface },
+  langChipOn: { backgroundColor: colors.primary, borderColor: colors.primary },
+  langText: { ...type.body, fontWeight: '700', color: colors.textSecondary },
+  langTextOn: { color: '#fff' },
   err: { ...type.caption, color: colors.danger, marginVertical: spacing.sm },
   switch: { alignItems: 'center', marginTop: spacing.lg },
   switchText: { ...type.body, color: colors.primary, fontWeight: '600' },
