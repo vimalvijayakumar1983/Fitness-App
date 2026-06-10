@@ -330,6 +330,39 @@ export interface Company {
   plan: string;
 }
 
+// ── Phase 3: glucose / CGM, family health, longevity ──
+
+/** When a glucose reading was taken, for context. */
+export type GlucoseTag = 'fasting' | 'pre_meal' | 'post_meal' | 'random';
+
+/** A blood-glucose reading (mg/dL), from a CGM or manual entry. */
+export interface GlucoseReading {
+  id: string;
+  date: ISODateString;
+  loggedAt: ISODateTimeString;
+  mgDl: number;
+  tag: GlucoseTag;
+  source: 'manual' | 'cgm';
+}
+
+export type FamilyRelation = 'spouse' | 'child' | 'parent' | 'sibling' | 'other';
+
+/** A household member tracked under the primary account. */
+export interface FamilyMember {
+  id: string;
+  name: string;
+  relation: FamilyRelation;
+  sex: 'male' | 'female' | 'other';
+  age: number;
+  heightCm?: number;
+  weightKg?: number;
+  smokes?: boolean;
+  /** 0..7 days of activity per week. */
+  activityDaysPerWeek?: number;
+  /** Known conditions, e.g. ["Type 2 diabetes", "Hypertension"]. */
+  conditions: string[];
+}
+
 export interface AppData {
   meals: MealEntry[];
   exercises: ExerciseEntry[];
@@ -351,6 +384,10 @@ export interface AppData {
   assessment: HealthAssessment | null;
   /** Analyzed lab reports (newest first). */
   labs: LabReport[];
+  /** Blood-glucose readings from CGM or manual entry (newest first). */
+  glucose: GlucoseReading[];
+  /** Household members tracked under this account. */
+  family: FamilyMember[];
 }
 
 export const DEFAULT_PROFILE: Profile = {
@@ -383,4 +420,6 @@ export const emptyAppData: AppData = {
   weights: [],
   assessment: null,
   labs: [],
+  glucose: [],
+  family: [],
 };

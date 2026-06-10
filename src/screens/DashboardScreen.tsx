@@ -15,7 +15,11 @@ import { CoachModal } from '@/components/CoachModal';
 import { WeightModal } from '@/components/WeightModal';
 import { HealthAssessmentModal } from '@/components/HealthAssessmentModal';
 import { LabsModal } from '@/components/LabsModal';
+import { LongevityModal } from '@/components/LongevityModal';
+import { GlucoseModal } from '@/components/GlucoseModal';
+import { FamilyModal } from '@/components/FamilyModal';
 import { computeMetabolicScore } from '@/utils/health';
+import { biologicalAge } from '@/utils/longevity';
 import { useData } from '@/context/DataContext';
 import { useAuth } from '@/context/AuthContext';
 import { colors, gradients, hexA, glow, radius, shadow, spacing, type } from '@/theme/colors';
@@ -67,7 +71,12 @@ export function DashboardScreen() {
   const [weightOpen, setWeightOpen] = useState(false);
   const [assessmentOpen, setAssessmentOpen] = useState(false);
   const [labsOpen, setLabsOpen] = useState(false);
+  const [longevityOpen, setLongevityOpen] = useState(false);
+  const [glucoseOpen, setGlucoseOpen] = useState(false);
+  const [familyOpen, setFamilyOpen] = useState(false);
   const metabolic = computeMetabolicScore(data.profile, data.assessment);
+  const bio = biologicalAge(data.profile, data.assessment, data);
+  const latestGlucose = data.glucose[0]?.mgDl ?? null;
   const latestWeight = data.weights[0]?.weightKg ?? data.profile.weightKg;
   const today = todayISO();
   const s = summarizeDay(data, today);
@@ -244,6 +253,23 @@ export function DashboardScreen() {
         </Pressable>
       </View>
 
+      {/* Longevity / biological age */}
+      <Pressable onPress={() => setLongevityOpen(true)}>
+        <LinearGradient colors={gradients.readiness as unknown as string[]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.longevityCard}>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.longevityLabel}>BIOLOGICAL AGE</Text>
+            <Text style={styles.longevityAge}>{bio.bioAge.toFixed(0)}<Text style={styles.longevityChrono}> vs {bio.chronoAge}</Text></Text>
+            <Text style={styles.longevitySub}>
+              {Math.abs(bio.deltaYears) < 0.5 ? 'On par with your age' : `${Math.abs(bio.deltaYears).toFixed(1)} yrs ${bio.deltaYears <= 0 ? 'younger' : 'older'}`} · explore your digital twin ›
+            </Text>
+          </View>
+          <View style={styles.longevityScoreBox}>
+            <Text style={styles.longevityScore}>{bio.longevityScore}</Text>
+            <Text style={styles.longevityScoreLabel}>longevity</Text>
+          </View>
+        </LinearGradient>
+      </Pressable>
+
       {/* Quick metrics */}
       <View style={styles.grid}>
         <StatTile emoji="🍽️" label="Calories in" value={`${s.caloriesIn}`} unit="kcal" gradient={gradients.meal} />
@@ -303,6 +329,30 @@ export function DashboardScreen() {
         ))
       )}
 
+      {/* Glucose / CGM */}
+      <Pressable onPress={() => setGlucoseOpen(true)}>
+        <LinearGradient colors={gradients.water as unknown as string[]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.coachCard}>
+          <Text style={styles.coachEmoji}>🩸</Text>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.coachTitle}>{latestGlucose != null ? `Glucose ${latestGlucose} mg/dL` : 'Track your glucose'}</Text>
+            <Text style={styles.coachSub}>Connect a CGM or log readings · time in range</Text>
+          </View>
+          <Text style={styles.coachArrow}>›</Text>
+        </LinearGradient>
+      </Pressable>
+
+      {/* Family health */}
+      <Pressable onPress={() => setFamilyOpen(true)}>
+        <LinearGradient colors={gradients.coral as unknown as string[]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.coachCard}>
+          <Text style={styles.coachEmoji}>👨‍👩‍👧</Text>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.coachTitle}>{data.family.length > 0 ? `Family health · ${data.family.length}` : 'Add your family'}</Text>
+            <Text style={styles.coachSub}>Track the health of the people you care for</Text>
+          </View>
+          <Text style={styles.coachArrow}>›</Text>
+        </LinearGradient>
+      </Pressable>
+
       {/* AI Lab analysis */}
       <Pressable onPress={() => setLabsOpen(true)}>
         <LinearGradient colors={gradients.water as unknown as string[]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.coachCard}>
@@ -332,6 +382,9 @@ export function DashboardScreen() {
       <WeightModal visible={weightOpen} onClose={() => setWeightOpen(false)} />
       <HealthAssessmentModal visible={assessmentOpen} onClose={() => setAssessmentOpen(false)} />
       <LabsModal visible={labsOpen} onClose={() => setLabsOpen(false)} />
+      <LongevityModal visible={longevityOpen} onClose={() => setLongevityOpen(false)} onTakeAssessment={() => setAssessmentOpen(true)} />
+      <GlucoseModal visible={glucoseOpen} onClose={() => setGlucoseOpen(false)} />
+      <FamilyModal visible={familyOpen} onClose={() => setFamilyOpen(false)} />
     </ScreenContainer>
   );
 }
@@ -424,6 +477,15 @@ const styles = StyleSheet.create({
   tileScore: { ...type.metric, marginTop: spacing.sm },
   tileUnit: { ...type.body, color: colors.textSecondary },
   tileSub: { ...type.caption, marginTop: 2 },
+
+  longevityCard: { flexDirection: 'row', alignItems: 'center', borderRadius: radius.xl, padding: spacing.xl, marginBottom: spacing.md },
+  longevityLabel: { ...type.label, color: 'rgba(255,255,255,0.85)' },
+  longevityAge: { fontSize: 38, fontWeight: '800', color: '#fff', letterSpacing: -1, marginTop: 2 },
+  longevityChrono: { fontSize: 17, fontWeight: '600', color: 'rgba(255,255,255,0.8)', letterSpacing: 0 },
+  longevitySub: { ...type.caption, color: 'rgba(255,255,255,0.9)', marginTop: 4 },
+  longevityScoreBox: { alignItems: 'center', marginLeft: spacing.md },
+  longevityScore: { fontSize: 34, fontWeight: '800', color: '#fff', letterSpacing: -1 },
+  longevityScoreLabel: { ...type.caption, color: 'rgba(255,255,255,0.85)', fontSize: 10 },
 
   coachCard: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, borderRadius: radius.xl, padding: spacing.xl, marginTop: spacing.md },
   coachEmoji: { fontSize: 26 },

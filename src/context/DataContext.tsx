@@ -21,6 +21,8 @@ import {
   WeightEntry,
   HealthAssessment,
   LabReport,
+  GlucoseReading,
+  FamilyMember,
 } from '@/models/types';
 import { loadAppData, saveAppData } from '@/services/storage';
 import { getHealthProvider } from '@/services/health/healthService';
@@ -60,9 +62,15 @@ interface DataContextValue {
   addWeight: (weightKg: number, bodyFatPct?: number) => void;
   setAssessment: (a: HealthAssessment) => void;
   addLab: (report: Omit<LabReport, 'id' | 'createdAt'>) => void;
+  /** Add one glucose reading. */
+  addGlucose: (reading: Omit<GlucoseReading, 'id' | 'loggedAt'>) => void;
+  /** Add many readings at once (e.g. a CGM sync). */
+  addGlucoseBatch: (readings: Omit<GlucoseReading, 'id'>[]) => void;
+  upsertFamilyMember: (member: FamilyMember) => void;
+  removeFamilyMember: (id: string) => void;
 
   removeEntry: (
-    kind: 'meals' | 'exercises' | 'moods' | 'sleep' | 'water' | 'weights' | 'labs',
+    kind: 'meals' | 'exercises' | 'moods' | 'sleep' | 'water' | 'weights' | 'labs' | 'glucose',
     id: string,
   ) => void;
 
@@ -301,8 +309,36 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     }));
   }, []);
 
+  const addGlucose = useCallback((reading: Omit<GlucoseReading, 'id' | 'loggedAt'>) => {
+    setData((prev) => ({
+      ...prev,
+      glucose: [{ ...reading, id: makeId(), loggedAt: new Date().toISOString() }, ...prev.glucose],
+    }));
+  }, []);
+
+  const addGlucoseBatch = useCallback((readings: Omit<GlucoseReading, 'id'>[]) => {
+    setData((prev) => ({
+      ...prev,
+      glucose: [...readings.map((r) => ({ ...r, id: makeId() })), ...prev.glucose],
+    }));
+  }, []);
+
+  const upsertFamilyMember = useCallback((member: FamilyMember) => {
+    setData((prev) => {
+      const exists = prev.family.some((m) => m.id === member.id);
+      return {
+        ...prev,
+        family: exists ? prev.family.map((m) => (m.id === member.id ? member : m)) : [member, ...prev.family],
+      };
+    });
+  }, []);
+
+  const removeFamilyMember = useCallback((id: string) => {
+    setData((prev) => ({ ...prev, family: prev.family.filter((m) => m.id !== id) }));
+  }, []);
+
   const removeEntry = useCallback(
-    (kind: 'meals' | 'exercises' | 'moods' | 'sleep' | 'water' | 'weights' | 'labs', id: string) => {
+    (kind: 'meals' | 'exercises' | 'moods' | 'sleep' | 'water' | 'weights' | 'labs' | 'glucose', id: string) => {
       setData((prev) => ({
         ...prev,
         [kind]: prev[kind].filter((entry) => entry.id !== id),
@@ -365,6 +401,10 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       addWeight,
       setAssessment,
       addLab,
+      addGlucose,
+      addGlucoseBatch,
+      upsertFamilyMember,
+      removeFamilyMember,
       removeEntry,
       syncHealthData,
     }),
@@ -391,6 +431,10 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       addWeight,
       setAssessment,
       addLab,
+      addGlucose,
+      addGlucoseBatch,
+      upsertFamilyMember,
+      removeFamilyMember,
       removeEntry,
       syncHealthData,
     ],
