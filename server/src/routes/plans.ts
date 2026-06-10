@@ -49,13 +49,15 @@ adminRouter.get('/customers', (_req, res) => {
   const rows = db
     .prepare(
       `SELECT u.id, u.email, u.name, u.role, u.segment_id, u.created_at,
+              COALESCE(sub.plan, 'free') AS plan,
               (SELECT 1 FROM customer_plans cp WHERE cp.user_id = u.id) AS has_plan
-       FROM users u ORDER BY u.created_at DESC`,
+       FROM users u LEFT JOIN subscriptions sub ON sub.user_id = u.id
+       ORDER BY u.created_at DESC`,
     )
     .all() as any[];
   res.json(
     rows.map((r) => ({
-      id: r.id, email: r.email, name: r.name, role: r.role,
+      id: r.id, email: r.email, name: r.name, role: r.role, plan: r.plan,
       segmentId: r.segment_id ?? null, hasPlan: !!r.has_plan, createdAt: r.created_at,
     })),
   );
@@ -140,65 +142,98 @@ adminRouter.put('/pricing', (req: Request, res: Response) => {
 });
 
 // ───────────────────────── Reports / analytics ─────────────────────────
-adminRouter.get('/stats', (_req, res) => {
+adminRouter.get('/stats', (req: Request, res: Response) => {
+  const days = Math.min(180, Math.max(7, Number(req.query.days) || 30));
   const one = (sql: string, ...args: any[]) => (db.prepare(sql).get(...args) as any)?.n ?? 0;
   const dayAgo = (d: number) => new Date(Date.now() - d * 864e5).toISOString();
+  const series = (rows: { d: string; n: number }[], n: number) => {
+    const byDay = new Map(rows.map((r) => [r.d, r.n]));
+    const out: { date: string; count: number }[] = [];
+    for (let i = n - 1; i >= 0; i--) {
+      const d = new Date(Date.now() - i * 864e5).toISOString().slice(0, 10);
+      out.push({ date: d, count: byDay.get(d) ?? 0 });
+    }
+    return out;
+  };
 
   const totalUsers = one('SELECT COUNT(*) n FROM users');
   const totalCustomers = one("SELECT COUNT(*) n FROM users WHERE role = 'customer'");
   const newToday = one('SELECT COUNT(*) n FROM users WHERE created_at >= ?', dayAgo(1));
-  const new7d = one('SELECT COUNT(*) n FROM users WHERE created_at >= ?', dayAgo(7));
-  const new30d = one('SELECT COUNT(*) n FROM users WHERE created_at >= ?', dayAgo(30));
+  const newInRange = one('SELECT COUNT(*) n FROM users WHERE created_at >= ?', dayAgo(days));
+  const prevRange = one('SELECT COUNT(*) n FROM users WHERE created_at >= ? AND created_at < ?', dayAgo(days * 2), dayAgo(days));
+  const growthPct = prevRange ? Math.round(((newInRange - prevRange) / prevRange) * 100) : newInRange ? 100 : 0;
 
-  const activeSql = "status IN ('active','trialing')";
-  const premium = one(`SELECT COUNT(*) n FROM subscriptions WHERE plan='premium' AND ${activeSql}`);
-  const coached = one(`SELECT COUNT(*) n FROM subscriptions WHERE plan='coached' AND ${activeSql}`);
+  const active = "status IN ('active','trialing')";
+  const premium = one(`SELECT COUNT(*) n FROM subscriptions WHERE plan='premium' AND ${active}`);
+  const coached = one(`SELECT COUNT(*) n FROM subscriptions WHERE plan='coached' AND ${active}`);
   const paying = premium + coached;
   const free = Math.max(0, totalUsers - paying);
+  const churned = one("SELECT COUNT(*) n FROM subscriptions WHERE status='canceled'");
   const conversion = totalUsers ? Math.round((paying / totalUsers) * 1000) / 10 : 0;
+  const churnRate = paying + churned ? Math.round((churned / (paying + churned)) * 1000) / 10 : 0;
 
-  // Rough MRR estimate in USD using current pricing (monthly equivalent).
+  // Active users from last cloud-sync time.
+  const activeUsers = {
+    dau: one('SELECT COUNT(*) n FROM user_state WHERE updated_at >= ?', dayAgo(1)),
+    wau: one('SELECT COUNT(*) n FROM user_state WHERE updated_at >= ?', dayAgo(7)),
+    mau: one('SELECT COUNT(*) n FROM user_state WHERE updated_at >= ?', dayAgo(30)),
+  };
+  const retention = totalUsers ? Math.round((activeUsers.wau / totalUsers) * 1000) / 10 : 0;
+
+  // Revenue estimates (USD) from current pricing.
   const pr = getPricing();
-  const mPrem = pr.premium.month.usd / 100;
-  const mCoach = pr.coached.month.usd / 100;
-  const mrr = Math.round(premium * mPrem + coached * mCoach);
+  const mrr = Math.round(premium * (pr.premium.month.usd / 100) + coached * (pr.coached.month.usd / 100));
+  const arr = mrr * 12;
+  const arpu = paying ? Math.round((mrr / paying) * 100) / 100 : 0;
 
-  // Signups per day, last 14 days.
-  const rows = db
-    .prepare(
-      `SELECT substr(created_at,1,10) d, COUNT(*) n FROM users
-       WHERE created_at >= ? GROUP BY d ORDER BY d`,
-    )
-    .all(dayAgo(14)) as { d: string; n: number }[];
-  const byDay = new Map(rows.map((r) => [r.d, r.n]));
-  const signups: { date: string; count: number }[] = [];
-  for (let i = 13; i >= 0; i--) {
-    const d = new Date(Date.now() - i * 864e5).toISOString().slice(0, 10);
-    signups.push({ date: d, count: byDay.get(d) ?? 0 });
-  }
+  const signupRows = db.prepare(
+    `SELECT substr(created_at,1,10) d, COUNT(*) n FROM users WHERE created_at >= ? GROUP BY d`,
+  ).all(dayAgo(days)) as { d: string; n: number }[];
+  const signups = series(signupRows, days);
+  const baseline = totalUsers - signups.reduce((a, b) => a + b.count, 0);
+  let run = baseline;
+  const cumulative = signups.map((s) => ({ date: s.date, count: (run += s.count) }));
 
-  const segments = db
-    .prepare(
-      `SELECT s.name, COUNT(u.id) n FROM segments s
-       LEFT JOIN users u ON u.segment_id = s.id GROUP BY s.id ORDER BY n DESC`,
-    )
-    .all() as { name: string; n: number }[];
+  const subRows = db.prepare(
+    `SELECT substr(updated_at,1,10) d, COUNT(*) n FROM subscriptions
+     WHERE plan != 'free' AND ${active} AND updated_at >= ? GROUP BY d`,
+  ).all(dayAgo(days)) as { d: string; n: number }[];
+  const newSubs = series(subRows, days);
 
-  const recent = db
-    .prepare(
-      `SELECT u.email, u.name, u.created_at, COALESCE(sub.plan,'free') plan
-       FROM users u LEFT JOIN subscriptions sub ON sub.user_id = u.id
-       ORDER BY u.created_at DESC LIMIT 8`,
-    )
-    .all() as any[];
+  const segments = db.prepare(
+    `SELECT s.name, COUNT(u.id) n FROM segments s LEFT JOIN users u ON u.segment_id = s.id GROUP BY s.id ORDER BY n DESC`,
+  ).all() as { name: string; n: number }[];
+
+  const content = {
+    foods: one('SELECT COUNT(*) n FROM cms_foods'),
+    recipes: one('SELECT COUNT(*) n FROM cms_recipes'),
+    exercises: one('SELECT COUNT(*) n FROM cms_exercises'),
+    templates: one('SELECT COUNT(*) n FROM plan_templates'),
+    segments: one('SELECT COUNT(*) n FROM segments'),
+  };
+
+  const recent = db.prepare(
+    `SELECT u.email, u.name, u.created_at, COALESCE(sub.plan,'free') plan
+     FROM users u LEFT JOIN subscriptions sub ON sub.user_id = u.id
+     ORDER BY u.created_at DESC LIMIT 8`,
+  ).all() as any[];
+
+  const recentSubs = db.prepare(
+    `SELECT u.email, s.plan, s.updated_at FROM subscriptions s JOIN users u ON u.id = s.user_id
+     WHERE s.plan != 'free' ORDER BY s.updated_at DESC LIMIT 6`,
+  ).all() as any[];
 
   res.json({
-    totalUsers, totalCustomers, newToday, new7d, new30d,
+    days,
+    totalUsers, totalCustomers, newToday, newInRange, growthPct,
     plans: { free, premium, coached, paying },
-    conversion, mrr,
-    signups,
-    segments,
+    conversion, churned, churnRate,
+    revenue: { mrr, arr, arpu },
+    activeUsers, retention,
+    signups, cumulative, newSubs,
+    segments, content,
     recent: recent.map((r) => ({ email: r.email, name: r.name, plan: r.plan, createdAt: r.created_at })),
+    recentSubs: recentSubs.map((r) => ({ email: r.email, plan: r.plan, at: r.updated_at })),
   });
 });
 

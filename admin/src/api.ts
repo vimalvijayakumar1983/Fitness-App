@@ -56,7 +56,7 @@ export const api = {
   deleteTemplate: (id: string) => req('DELETE', `/api/admin/plan-templates/${id}`),
 
   // ── Reports & pricing ──
-  stats: <T>() => req<T>('GET', '/api/admin/stats'),
+  stats: <T>(days = 30) => req<T>('GET', `/api/admin/stats?days=${days}`),
   getPricing: <T>() => req<T>('GET', '/api/admin/pricing'),
   savePricing: <T>(body: unknown) => req<T>('PUT', '/api/admin/pricing', body),
 };
