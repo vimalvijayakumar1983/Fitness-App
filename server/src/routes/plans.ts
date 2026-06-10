@@ -63,6 +63,21 @@ adminRouter.get('/customers', (_req, res) => {
   );
 });
 
+adminRouter.get('/customers/:id', (req: Request, res: Response) => {
+  const u = db.prepare('SELECT id, email, name, role, segment_id, created_at FROM users WHERE id = ?').get(req.params.id) as any;
+  if (!u) return res.status(404).json({ error: 'Customer not found.' });
+  const sub = db.prepare('SELECT plan, status, current_period_end FROM subscriptions WHERE user_id = ?').get(req.params.id) as any;
+  const state = db.prepare('SELECT updated_at FROM user_state WHERE user_id = ?').get(req.params.id) as any;
+  const planRow = db.prepare('SELECT name, meals, assigned_at FROM customer_plans WHERE user_id = ?').get(req.params.id) as any;
+  res.json({
+    id: u.id, email: u.email, name: u.name, role: u.role,
+    segmentId: u.segment_id ?? null, createdAt: u.created_at,
+    subscription: { plan: sub?.plan ?? 'free', status: sub?.status ?? 'none' },
+    lastActive: state?.updated_at ?? null,
+    assignedPlan: planRow ? { name: planRow.name, meals: JSON.parse(planRow.meals), assignedAt: planRow.assigned_at } : null,
+  });
+});
+
 adminRouter.patch('/customers/:id', (req: Request, res: Response) => {
   const segmentId = req.body?.segmentId ?? null;
   const r = db.prepare('UPDATE users SET segment_id = ? WHERE id = ?').run(segmentId, req.params.id);

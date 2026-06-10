@@ -7,7 +7,7 @@
     "node": "20.x"
   },
   "scripts": {
-    "build": "tsc",
+    "build": "tsc && node -e \"const fs=require('fs');fs.mkdirSync('dist/seed',{recursive:true});fs.copyFileSync('src/seed/catalog.json','dist/seed/catalog.json')\"",
     "start": "node dist/index.js",
     "dev": "ts-node-dev --respawn --transpile-only src/index.ts",
     "seed": "ts-node src/foods/seed.ts",

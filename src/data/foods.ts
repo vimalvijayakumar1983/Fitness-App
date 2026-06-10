@@ -148,7 +148,10 @@ export const FOODS: Food[] = [
  * user's own custom foods (which win on id collisions).
  */
 export function mergeFoods(custom: Food[] = [], cms: Food[] = []): Food[] {
-  return mergeById(FOODS, [cms, custom]);
+  // Backend is the source of truth when it has content (so admin
+  // edits/adds/deletes reflect); bundled FOODS is the offline fallback.
+  const base = cms.length ? cms : FOODS;
+  return mergeById(base, [custom]);
 }
 
 export function foodsById(foods: Food[]): Record<string, Food> {

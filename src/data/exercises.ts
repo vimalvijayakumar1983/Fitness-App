@@ -167,7 +167,9 @@ export const CATEGORY_LABELS: Record<string, string> = {
  * the user's own custom exercises (which win on id collisions).
  */
 export function mergeExercises(custom: ExerciseDef[] = [], cms: ExerciseDef[] = []): ExerciseDef[] {
-  return mergeById(EXERCISES, [cms, custom]);
+  // Backend is authoritative when populated; bundled list is the offline fallback.
+  const base = cms.length ? cms : EXERCISES;
+  return mergeById(base, [custom]);
 }
 
 /** Estimate calories burned for a session. */

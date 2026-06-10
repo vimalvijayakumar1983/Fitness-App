@@ -3,6 +3,7 @@ import express from 'express';
 import cors, { CorsOptions } from 'cors';
 import { initSchema, migrate } from './db';
 import { seedFoods } from './foods/seed';
+import { seedContent } from './seed/content';
 import { authRouter, seedAdmin } from './auth';
 import { logsRouter } from './routes/logs';
 import { goalsRouter } from './routes/goals';
@@ -67,6 +68,7 @@ migrate();
 seedAdmin();
 const added = seedFoods();
 if (added > 0) console.log(`Seeded ${added} foods.`);
+seedContent();
 
 const port = Number(process.env.PORT) || 4000;
 app.listen(port, () => {

@@ -1,5 +1,4 @@
 import { Recipe } from '@/models/types';
-import { mergeById } from '@/utils/merge';
 
 /**
  * Offline recipe library for the meal planner. Macros are per serving.
@@ -167,9 +166,9 @@ export const RECIPES_BY_ID: Record<string, Recipe> = Object.fromEntries(
   RECIPES.map((r) => [r.id, r]),
 );
 
-/** Effective recipe list = bundled with admin CMS recipes layered on. */
+/** Backend recipes are authoritative when present; bundled is the fallback. */
 export function mergeRecipes(cms: Recipe[] = []): Recipe[] {
-  return mergeById(RECIPES, [cms]);
+  return cms.length ? cms : RECIPES;
 }
 
 export function recipesById(list: Recipe[]): Record<string, Recipe> {

@@ -43,6 +43,7 @@ export const api = {
 
   // ── CRM: customers ──
   listCustomers: <T>() => req<T[]>('GET', '/api/admin/customers'),
+  getCustomer: <T>(id: string) => req<T>('GET', `/api/admin/customers/${id}`),
   setSegment: (id: string, segmentId: string | null) =>
     req('PATCH', `/api/admin/customers/${id}`, { segmentId }),
   getCustomerPlan: <T>(id: string) => req<T>('GET', `/api/admin/customers/${id}/plan`),
