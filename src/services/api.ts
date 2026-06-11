@@ -274,4 +274,9 @@ export const api = {
       method: 'POST',
       body: { imageBase64, mediaType },
     }),
+  briefing: (facts: Record<string, unknown>, context?: string) =>
+    request<{ headline: string; items: string[]; focus: string; offline: boolean }>('/coach/briefing', {
+      method: 'POST',
+      body: { facts, context },
+    }),
 };

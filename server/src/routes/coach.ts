@@ -94,6 +94,80 @@ coachRouter.post('/chat', async (req: AuthedRequest, res: Response) => {
   }
 });
 
+/* ----------------------- Daily briefing (agent) ------------------ */
+
+const briefingSchema = z.object({
+  context: z.string().max(2000).optional(),
+  facts: z
+    .object({
+      name: z.string().optional(),
+      partOfDay: z.enum(['morning', 'afternoon', 'evening']).default('morning'),
+      longevityScore: z.number().optional(),
+      bioAge: z.number().optional(),
+      chronoAge: z.number().optional(),
+      glucoseAvg: z.number().optional(),
+      tirPct: z.number().optional(),
+      weightChangeKg: z.number().optional(),
+      programName: z.string().optional(),
+      tasksLeft: z.number().optional(),
+      caloriesIn: z.number().optional(),
+      calorieTarget: z.number().optional(),
+      activeMinutes: z.number().optional(),
+      loggedToday: z.boolean().optional(),
+    })
+    .default({}),
+});
+
+/** Rule-based briefing so the agent works without an API key. */
+function ruleBriefing(f: z.infer<typeof briefingSchema>['facts']): { headline: string; items: string[]; focus: string } {
+  const greet = f.partOfDay === 'evening' ? 'Good evening' : f.partOfDay === 'afternoon' ? 'Good afternoon' : 'Good morning';
+  const headline = `${greet}${f.name ? `, ${f.name}` : ''} — here's your focus today.`;
+  const items: string[] = [];
+  if (f.tasksLeft && f.programName) items.push(`Finish ${f.tasksLeft} task${f.tasksLeft > 1 ? 's' : ''} in your ${f.programName} program this week.`);
+  if (f.tirPct != null && f.tirPct < 70) items.push(`Glucose time-in-range is ${f.tirPct}% — add a 10-min walk after meals to lift it.`);
+  else if (f.glucoseAvg != null) items.push(`Log a fasting glucose reading to keep your trend accurate.`);
+  if (f.calorieTarget && f.caloriesIn != null && f.caloriesIn < f.calorieTarget * 0.5 && f.partOfDay !== 'morning') items.push(`You're at ${f.caloriesIn}/${f.calorieTarget} kcal — fuel up with protein.`);
+  if (!f.activeMinutes) items.push('No movement logged yet — even 20 minutes counts.');
+  if (f.weightChangeKg != null && f.weightChangeKg < 0) items.push(`Nice — you're down ${Math.abs(f.weightChangeKg)}kg recently. Keep the momentum.`);
+  if (items.length === 0) items.push('You\'re on track. Log your meals and movement to keep your streak alive.');
+
+  let focus = 'Consistency beats intensity — small wins today compound.';
+  if (f.bioAge != null && f.chronoAge != null && f.bioAge > f.chronoAge) focus = `Your biological age is ${(f.bioAge - f.chronoAge).toFixed(0)} yrs above your real age — today's habits can close that gap.`;
+  else if (f.longevityScore != null && f.longevityScore >= 80) focus = `Longevity score ${f.longevityScore}/100 — excellent. Protect it with sleep and movement.`;
+  return { headline, items: items.slice(0, 4), focus };
+}
+
+coachRouter.post('/briefing', async (req: AuthedRequest, res: Response) => {
+  const parsed = briefingSchema.safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: parsed.error.message });
+  const { facts, context } = parsed.data;
+  const fallback = ruleBriefing(facts);
+
+  if (!anthropic) return res.json({ ...fallback, offline: true });
+
+  try {
+    const sys = `You are the proactive daily health agent for Al Zaabi Health. Using the user's data, write a short, warm, specific daily briefing. Respond ONLY as JSON: {"headline": string, "items": string[3-4 short actionable bullets], "focus": string (one motivating sentence)}. Be concrete and reference their numbers. Not medical advice.`;
+    const msg = await anthropic.messages.create({
+      model: MODEL,
+      max_tokens: 600,
+      system: sys,
+      messages: [{ role: 'user', content: `${context ?? ''}\n\nFacts: ${JSON.stringify(facts)}\n\nWrite today's briefing as JSON.` }],
+    });
+    const text = msg.content.filter((b): b is Anthropic.TextBlock => b.type === 'text').map((b) => b.text).join('');
+    const start = text.indexOf('{');
+    const end = text.lastIndexOf('}');
+    const json = start >= 0 && end > start ? JSON.parse(text.slice(start, end + 1)) : fallback;
+    res.json({
+      headline: json.headline ?? fallback.headline,
+      items: Array.isArray(json.items) && json.items.length ? json.items.slice(0, 4) : fallback.items,
+      focus: json.focus ?? fallback.focus,
+      offline: false,
+    });
+  } catch {
+    res.json({ ...fallback, offline: true });
+  }
+});
+
 /* ----------------------- Photo food analysis --------------------- */
 
 const analyzeSchema = z.object({

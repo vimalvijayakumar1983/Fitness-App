@@ -19,6 +19,7 @@ import { LongevityModal } from '@/components/LongevityModal';
 import { GlucoseModal } from '@/components/GlucoseModal';
 import { FamilyModal } from '@/components/FamilyModal';
 import { WeekReviewModal } from '@/components/WeekReviewModal';
+import { DailyBriefing } from '@/components/DailyBriefing';
 import { computeMetabolicScore } from '@/utils/health';
 import { biologicalAge } from '@/utils/longevity';
 import { useData } from '@/context/DataContext';
@@ -178,6 +179,9 @@ export function DashboardScreen() {
           </View>
         </View>
       ) : null}
+
+      {/* AI daily briefing (agent) */}
+      <DailyBriefing />
 
       {/* Hero: Readiness score gauge + subscores */}
       <LinearGradient
