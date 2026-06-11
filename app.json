@@ -17,6 +17,10 @@
       "supportsTablet": true,
       "bundleIdentifier": "com.alzaabi.health",
       "buildNumber": "1",
+      "entitlements": {
+        "com.apple.developer.healthkit": true,
+        "com.apple.developer.healthkit.access": []
+      },
       "infoPlist": {
         "NSHealthShareUsageDescription": "We use your health data to track exercise, steps, sleep and heart rate.",
         "NSHealthUpdateUsageDescription": "We log workouts you record in the app back to Apple Health.",
