@@ -94,6 +94,18 @@ class MockHealthProvider implements HealthProvider {
 
 let provider: HealthProvider = new MockHealthProvider();
 
+// On Android, prefer the real Health Connect reader when the native module is
+// present (dev/EAS build). Falls back to the mock in Expo Go / web / iOS.
+try {
+  // Metro resolves healthConnect.native.ts on device, the web stub otherwise.
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const { makeHealthConnectProvider } = require('./healthConnect');
+  const hc = makeHealthConnectProvider?.();
+  if (hc) provider = hc;
+} catch {
+  /* native module unavailable — keep the mock provider */
+}
+
 /** Allows real providers to be injected once native modules are added. */
 export function setHealthProvider(next: HealthProvider): void {
   provider = next;

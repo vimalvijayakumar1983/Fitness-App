@@ -1,9 +1,25 @@
 import React, { useState } from 'react';
 import { ActivityIndicator, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import * as ImagePicker from 'expo-image-picker';
 import { PrimaryButton } from './PrimaryButton';
 import { useAuth } from '@/context/AuthContext';
 import { api } from '@/services/api';
+
+type PickedImage = { base64: string; mediaType: string } | null;
+
+/** Native camera / library via expo-image-picker. */
+async function nativePick(useCamera: boolean): Promise<PickedImage> {
+  const perm = useCamera
+    ? await ImagePicker.requestCameraPermissionsAsync()
+    : await ImagePicker.requestMediaLibraryPermissionsAsync();
+  if (!perm.granted) return null;
+  const opts: ImagePicker.ImagePickerOptions = { base64: true, quality: 0.6, mediaTypes: ImagePicker.MediaTypeOptions.Images };
+  const res = useCamera ? await ImagePicker.launchCameraAsync(opts) : await ImagePicker.launchImageLibraryAsync(opts);
+  if (res.canceled || !res.assets?.[0]) return null;
+  const a = res.assets[0];
+  return { base64: a.base64 ?? '', mediaType: a.mimeType || 'image/jpeg' };
+}
 import { colors, gradients, radius, spacing, type } from '@/theme/colors';
 import type { FoodItem, MealType } from '@/models/types';
 
@@ -43,11 +59,9 @@ export function PhotoLogModal({ visible, mealType, onAdd, onClose }: Props) {
   const reset = () => { setItems([]); setNote(''); setErr(''); setBarcode(''); };
   const close = () => { reset(); onClose(); };
 
-  const snap = async () => {
-    setErr('');
-    const img = await pickImage();
-    if (!img) { setErr('Photo logging is available on the web app and the mobile app.'); return; }
-    setBusy(true);
+  const runAnalyze = async (img: PickedImage) => {
+    if (!img || !img.base64) return;
+    setErr(''); setBusy(true);
     try {
       const r = await api.analyzeFoodPhoto(img.base64, img.mediaType as any);
       const mapped: FoodItem[] = (r.items || []).map((i: any) => ({
@@ -61,6 +75,15 @@ export function PhotoLogModal({ visible, mealType, onAdd, onClose }: Props) {
       setErr(e.message || 'Photo analysis needs the AI coach (ANTHROPIC_API_KEY) configured.');
     } finally { setBusy(false); }
   };
+
+  const snapWeb = async () => {
+    setErr('');
+    const img = await pickImage();
+    if (!img) { setErr('Choose an image to analyze.'); return; }
+    runAnalyze(img);
+  };
+  const snapCamera = async () => runAnalyze(await nativePick(true));
+  const snapLibrary = async () => runAnalyze(await nativePick(false));
 
   const lookup = async () => {
     const code = barcode.trim();
@@ -100,7 +123,14 @@ export function PhotoLogModal({ visible, mealType, onAdd, onClose }: Props) {
             ) : (
               <>
                 <Text style={styles.intro}>Snap your plate — AI identifies the foods and estimates calories & macros. Or scan a barcode.</Text>
-                <PrimaryButton label={busy ? 'Analyzing…' : '📸 Photograph your meal'} onPress={snap} gradient={gradients.meal} disabled={busy} />
+                {Platform.OS === 'web' ? (
+                  <PrimaryButton label={busy ? 'Analyzing…' : '📸 Photograph your meal'} onPress={snapWeb} gradient={gradients.meal} disabled={busy} />
+                ) : (
+                  <View style={{ flexDirection: 'row', gap: spacing.sm }}>
+                    <PrimaryButton label={busy ? '…' : '📷 Take photo'} onPress={snapCamera} gradient={gradients.meal} disabled={busy} style={{ flex: 1 }} />
+                    <PrimaryButton label="🖼 Library" onPress={snapLibrary} variant="soft" color={colors.meal} disabled={busy} style={{ flex: 1 }} />
+                  </View>
+                )}
 
                 <View style={styles.barcodeRow}>
                   <TextInput style={styles.barcodeInput} placeholder="Barcode number" placeholderTextColor={colors.textMuted} keyboardType="number-pad" value={barcode} onChangeText={setBarcode} />
