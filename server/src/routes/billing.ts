@@ -65,7 +65,7 @@ billingRouter.get('/subscription', (req: AuthedRequest, res: Response) => {
 billingRouter.post('/checkout', async (req: AuthedRequest, res: Response) => {
   const tier = (req.body?.tier as Tier) ?? 'premium';
   const interval = (req.body?.interval as Interval) ?? 'month';
-  const currency = ((req.body?.currency as string) ?? 'usd').toLowerCase();
+  const currency = ((req.body?.currency as string) ?? 'aed').toLowerCase();
   const PRICES = getPricing();
   const amount = PRICES[tier]?.[interval]?.[currency] ?? PRICES[tier]?.[interval]?.usd;
   if (!amount) return res.status(400).json({ error: 'Unknown plan or currency.' });

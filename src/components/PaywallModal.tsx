@@ -15,7 +15,7 @@ interface Props {
 type Tier = 'premium' | 'coached';
 type Interval = 'month' | 'year';
 
-const CURRENCIES = ['usd', 'aed', 'eur', 'gbp'] as const;
+const CURRENCIES = ['aed', 'usd', 'eur', 'gbp'] as const;
 const SYMBOL: Record<string, string> = { usd: '$', aed: 'AED ', eur: '€', gbp: '£' };
 
 // Fallback display prices (in minor units) until the live pricing loads.
@@ -33,7 +33,7 @@ export function PaywallModal({ visible, onClose }: Props) {
   const { token } = useAuth();
   const { refreshSubscription } = useData();
   const [interval, setInterval] = useState<Interval>('year');
-  const [currency, setCurrency] = useState('usd');
+  const [currency, setCurrency] = useState('aed');
   const [busy, setBusy] = useState<Tier | null>(null);
   const [msg, setMsg] = useState('');
   const [prices, setPrices] = useState<PricingConfig>(DEFAULT_PRICES);
