@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { Modal, Pressable, StyleSheet, Switch, Text, View } from 'react-native';
+import { Image, Modal, Pressable, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import * as ImagePicker from 'expo-image-picker';
 import { TextField } from './TextField';
 import { PrimaryButton } from './PrimaryButton';
 import { PaywallModal } from './PaywallModal';
@@ -12,6 +13,33 @@ import { DEFAULT_REMINDERS, pushSupported } from '@/services/notifications';
 import { colors, gradients, radius, spacing, type } from '@/theme/colors';
 import { Alert, Linking, Platform } from 'react-native';
 
+const AVATAR_EMOJIS = ['🦊', '🐱', '🐼', '🦁', '🐯', '🐨', '🐶', '🐵', '🦄', '🐸', '💪', '🏃', '🧘', '🥗', '🍎', '🔥', '🌿', '⭐️', '😀', '😎', '🧑', '👩', '👨', '🧔'];
+
+/** Pick a photo (web file input or native image picker) → a data URL. */
+async function pickAvatarPhoto(): Promise<string | null> {
+  if (Platform.OS === 'web') {
+    if (typeof document === 'undefined') return null;
+    return new Promise((resolve) => {
+      const input = document.createElement('input');
+      input.type = 'file'; input.accept = 'image/*';
+      input.onchange = () => {
+        const f = input.files?.[0];
+        if (!f) return resolve(null);
+        const reader = new FileReader();
+        reader.onload = () => resolve(String(reader.result));
+        reader.readAsDataURL(f);
+      };
+      input.click();
+    });
+  }
+  const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+  if (!perm.granted) return null;
+  const res = await ImagePicker.launchImageLibraryAsync({ base64: true, quality: 0.5, allowsEditing: true, aspect: [1, 1], mediaTypes: ImagePicker.MediaTypeOptions.Images });
+  if (res.canceled || !res.assets?.[0]?.base64) return null;
+  const a = res.assets[0];
+  return `data:${a.mimeType || 'image/jpeg'};base64,${a.base64}`;
+}
+
 interface Props {
   visible: boolean;
   onClose: () => void;
@@ -20,7 +48,7 @@ interface Props {
 /** Sign up / log in, and show cloud-sync status for the signed-in user. */
 export function AccountModal({ visible, onClose }: Props) {
   const { user, login, register, logout } = useAuth();
-  const { syncing, subscription, isPremium, refreshSubscription, data, setReminders } = useData();
+  const { syncing, subscription, isPremium, refreshSubscription, data, setReminders, updateProfile } = useData();
   const reminders = data.reminders ?? DEFAULT_REMINDERS;
   const { lang, setLang, t } = useI18n();
   const [paywallOpen, setPaywallOpen] = useState(false);
@@ -125,7 +153,41 @@ export function AccountModal({ visible, onClose }: Props) {
             </Pressable>
           </View>
 
-          <View style={styles.body}>
+          <ScrollView contentContainerStyle={styles.body} showsVerticalScrollIndicator={false}>
+            {/* Avatar — photo or emoji */}
+            <View style={styles.avatarBlock}>
+              <Pressable
+                onPress={async () => { const photo = await pickAvatarPhoto(); if (photo) updateProfile({ avatarPhoto: photo }); }}
+                style={styles.avatarBig}
+              >
+                {data.profile.avatarPhoto ? (
+                  <Image source={{ uri: data.profile.avatarPhoto }} style={styles.avatarImg} />
+                ) : data.profile.avatarEmoji ? (
+                  <Text style={styles.avatarBigEmoji}>{data.profile.avatarEmoji}</Text>
+                ) : (
+                  <Text style={styles.avatarBigText}>{(user?.name || user?.email || data.profile.name || 'U')[0].toUpperCase()}</Text>
+                )}
+                {isPremium ? <View style={styles.avatarCrown}><Text style={{ fontSize: 12 }}>👑</Text></View> : null}
+              </Pressable>
+              <View style={styles.avatarActions}>
+                <Pressable onPress={async () => { const photo = await pickAvatarPhoto(); if (photo) updateProfile({ avatarPhoto: photo }); }}>
+                  <Text style={styles.avatarLink}>Upload photo</Text>
+                </Pressable>
+                {(data.profile.avatarPhoto || data.profile.avatarEmoji) ? (
+                  <Pressable onPress={() => updateProfile({ avatarPhoto: undefined, avatarEmoji: undefined })}>
+                    <Text style={[styles.avatarLink, { color: colors.danger }]}>Reset</Text>
+                  </Pressable>
+                ) : null}
+              </View>
+              <View style={styles.emojiRow}>
+                {AVATAR_EMOJIS.map((e) => (
+                  <Pressable key={e} onPress={() => updateProfile({ avatarEmoji: e, avatarPhoto: undefined })} style={[styles.emojiChip, data.profile.avatarEmoji === e && !data.profile.avatarPhoto && styles.emojiChipOn]}>
+                    <Text style={{ fontSize: 22 }}>{e}</Text>
+                  </Pressable>
+                ))}
+              </View>
+            </View>
+
             {!apiEnabled ? (
               <Text style={styles.warn}>Cloud sync isn't configured for this build. Set EXPO_PUBLIC_API_URL to enable accounts.</Text>
             ) : null}
@@ -259,7 +321,7 @@ export function AccountModal({ visible, onClose }: Props) {
                 </Pressable>
               </>
             )}
-          </View>
+          </ScrollView>
         </SafeAreaView>
       </View>
     </Modal>
@@ -273,7 +335,18 @@ const styles = StyleSheet.create({
   eyebrow: { ...type.label, color: colors.primary, marginBottom: 4 },
   closeBtn: { width: 36, height: 36, borderRadius: 18, backgroundColor: colors.surfaceMuted, alignItems: 'center', justifyContent: 'center' },
   closeText: { color: colors.textSecondary, fontSize: 16, fontWeight: '700' },
-  body: { paddingHorizontal: spacing.lg },
+  body: { paddingHorizontal: spacing.lg, paddingBottom: spacing.xxl },
+  avatarBlock: { alignItems: 'center', marginBottom: spacing.lg },
+  avatarBig: { width: 92, height: 92, borderRadius: 46, backgroundColor: colors.primarySoft, alignItems: 'center', justifyContent: 'center', overflow: 'hidden', borderWidth: 2, borderColor: colors.primary },
+  avatarImg: { width: '100%', height: '100%' },
+  avatarBigEmoji: { fontSize: 46 },
+  avatarBigText: { fontSize: 38, fontWeight: '800', color: colors.primaryDark },
+  avatarCrown: { position: 'absolute', bottom: -2, right: -2, backgroundColor: '#fff', borderRadius: 12, width: 24, height: 24, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: colors.border },
+  avatarActions: { flexDirection: 'row', gap: spacing.lg, marginTop: spacing.md },
+  avatarLink: { ...type.caption, color: colors.primary, fontWeight: '700' },
+  emojiRow: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: spacing.sm, marginTop: spacing.md },
+  emojiChip: { width: 40, height: 40, borderRadius: 12, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.surfaceMuted },
+  emojiChipOn: { backgroundColor: colors.primarySoft, borderWidth: 1.5, borderColor: colors.primary },
   warn: { ...type.caption, color: colors.warning, marginBottom: spacing.md },
   card: { backgroundColor: colors.surface, borderRadius: radius.lg, borderWidth: 1, borderColor: colors.border, padding: spacing.xl },
   label: { ...type.label, color: colors.textMuted },

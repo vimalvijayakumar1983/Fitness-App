@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Pressable, StyleSheet, View, Text } from 'react-native';
+import { Image, Pressable, StyleSheet, View, Text } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { ScreenContainer } from '@/components/ScreenContainer';
 import { Card } from '@/components/Card';
@@ -11,6 +11,7 @@ import { BarChart } from '@/components/BarChart';
 import { MacroSummary } from '@/components/MacroSummary';
 import { EntryRow } from '@/components/EntryRow';
 import { AccountModal } from '@/components/AccountModal';
+import { PaywallModal } from '@/components/PaywallModal';
 import { CoachModal } from '@/components/CoachModal';
 import { WeightModal } from '@/components/WeightModal';
 import { HealthAssessmentModal } from '@/components/HealthAssessmentModal';
@@ -66,9 +67,12 @@ function dayLabels(n: number): string[] {
 }
 
 export function DashboardScreen() {
-  const { data, syncHealthData } = useData();
+  const { data, syncHealthData, isPremium, featureLocked, subscription } = useData();
   const { user } = useAuth();
   const { t } = useI18n();
+  const [paywallOpen, setPaywallOpen] = useState(false);
+  /** Opens the feature if unlocked, else the paywall. */
+  const gated = (key: string, open: () => void) => () => (featureLocked(key) ? setPaywallOpen(true) : open());
   const [refreshing, setRefreshing] = useState(false);
   const [accountOpen, setAccountOpen] = useState(false);
   const [coachOpen, setCoachOpen] = useState(false);
@@ -166,18 +170,45 @@ export function DashboardScreen() {
       refreshing={refreshing}
       right={
         <Pressable style={styles.avatar} onPress={() => setAccountOpen(true)}>
-          <Text style={styles.avatarText}>{(user?.name || user?.email || 'V')[0].toUpperCase()}</Text>
+          {data.profile.avatarPhoto ? (
+            <Image source={{ uri: data.profile.avatarPhoto }} style={styles.avatarImg} />
+          ) : data.profile.avatarEmoji ? (
+            <Text style={styles.avatarEmoji}>{data.profile.avatarEmoji}</Text>
+          ) : (
+            <Text style={styles.avatarText}>{(user?.name || user?.email || 'V')[0].toUpperCase()}</Text>
+          )}
+          {isPremium ? <View style={styles.avatarBadge}><Text style={{ fontSize: 10 }}>👑</Text></View> : null}
         </Pressable>
       }
     >
-      {/* Streak chip */}
-      {streak > 0 ? (
-        <View style={styles.streakRow}>
+      {/* Status chips: premium badge + streak */}
+      <View style={styles.statusRow}>
+        {isPremium ? (
+          <View style={styles.premiumChip}>
+            <Text style={styles.premiumEmoji}>👑</Text>
+            <Text style={styles.premiumText}>{subscription?.plan === 'coached' ? 'COACHED MEMBER' : 'PREMIUM MEMBER'}</Text>
+          </View>
+        ) : null}
+        {streak > 0 ? (
           <View style={styles.streakChip}>
             <Text style={styles.streakEmoji}>🔥</Text>
             <Text style={styles.streakText}>{streak}-day streak</Text>
           </View>
-        </View>
+        ) : null}
+      </View>
+
+      {/* Free → upgrade prompt */}
+      {!isPremium ? (
+        <Pressable onPress={() => setPaywallOpen(true)}>
+          <LinearGradient colors={gradients.readiness as unknown as string[]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.upgradeCard}>
+            <Text style={styles.upgradeEmoji}>✨</Text>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.upgradeTitle}>Unlock Premium</Text>
+              <Text style={styles.upgradeSub}>AI coach, meal-plan generation, lab analysis & more</Text>
+            </View>
+            <Text style={styles.upgradeCta}>Upgrade ›</Text>
+          </LinearGradient>
+        </Pressable>
       ) : null}
 
       {/* AI daily briefing (agent) */}
@@ -396,7 +427,7 @@ export function DashboardScreen() {
       </Pressable>
 
       {/* AI Lab analysis */}
-      <Pressable onPress={() => setLabsOpen(true)}>
+      <Pressable onPress={gated('lab_analysis', () => setLabsOpen(true))}>
         <LinearGradient colors={gradients.water as unknown as string[]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.coachCard}>
           <Text style={styles.coachEmoji}>🧪</Text>
           <View style={{ flex: 1 }}>
@@ -408,7 +439,7 @@ export function DashboardScreen() {
       </Pressable>
 
       {/* AI Coach */}
-      <Pressable onPress={() => setCoachOpen(true)}>
+      <Pressable onPress={gated('ai_coach', () => setCoachOpen(true))}>
         <LinearGradient colors={gradients.primary as unknown as string[]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.coachCard}>
           <Text style={styles.coachEmoji}>💬</Text>
           <View style={{ flex: 1 }}>
@@ -424,6 +455,7 @@ export function DashboardScreen() {
       <WeightModal visible={weightOpen} onClose={() => setWeightOpen(false)} />
       <HealthAssessmentModal visible={assessmentOpen} onClose={() => setAssessmentOpen(false)} />
       <LabsModal visible={labsOpen} onClose={() => setLabsOpen(false)} />
+      <PaywallModal visible={paywallOpen} onClose={() => setPaywallOpen(false)} />
       <LongevityModal visible={longevityOpen} onClose={() => setLongevityOpen(false)} onTakeAssessment={() => setAssessmentOpen(true)} />
       <GlucoseModal visible={glucoseOpen} onClose={() => setGlucoseOpen(false)} />
       <FamilyModal visible={familyOpen} onClose={() => setFamilyOpen(false)} />
@@ -464,9 +496,23 @@ const styles = StyleSheet.create({
     backgroundColor: colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
+    overflow: 'visible',
     ...shadow.sm,
   },
   avatarText: { color: colors.textInverse, fontSize: 18, fontWeight: '700' },
+  avatarEmoji: { fontSize: 24 },
+  avatarImg: { width: 44, height: 44, borderRadius: 22 },
+  avatarBadge: { position: 'absolute', bottom: -3, right: -3, backgroundColor: '#fff', borderRadius: 9, width: 18, height: 18, alignItems: 'center', justifyContent: 'center', ...shadow.sm },
+
+  statusRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm, marginBottom: spacing.md },
+  premiumChip: { flexDirection: 'row', alignItems: 'center', backgroundColor: hexA('#E8A317', 0.14), borderRadius: radius.pill, paddingVertical: 6, paddingHorizontal: 12, borderWidth: 1, borderColor: hexA('#E8A317', 0.4) },
+  premiumEmoji: { fontSize: 13, marginRight: 6 },
+  premiumText: { ...type.label, color: '#B7791F', letterSpacing: 0.3 },
+  upgradeCard: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, borderRadius: radius.xl, padding: spacing.lg, marginBottom: spacing.md },
+  upgradeEmoji: { fontSize: 24 },
+  upgradeTitle: { ...type.sectionTitle, color: '#fff' },
+  upgradeSub: { ...type.caption, color: 'rgba(255,255,255,0.9)', marginTop: 2 },
+  upgradeCta: { color: '#fff', fontWeight: '800', fontSize: 14 },
 
   streakRow: { flexDirection: 'row', marginBottom: spacing.md },
   streakChip: {

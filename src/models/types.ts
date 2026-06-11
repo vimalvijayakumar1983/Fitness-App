@@ -123,6 +123,10 @@ export interface Profile {
   activityLevel: number;
   /** Whether the user has finished the onboarding quiz. */
   onboarded?: boolean;
+  /** Chosen avatar emoji (e.g. "🦊"), if any. */
+  avatarEmoji?: string;
+  /** Uploaded avatar photo as a data URL, if any (takes priority over emoji). */
+  avatarPhoto?: string;
 }
 
 /**

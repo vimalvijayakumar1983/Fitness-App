@@ -6,6 +6,7 @@ import { ReportsView } from './Reports';
 import { RevenueView } from './Revenue';
 import { PricingView } from './Pricing';
 import { OnboardingView } from './Onboarding';
+import { FeaturesView } from './Features';
 import { NotifyView } from './Notify';
 import { ChallengesView } from './Challenges';
 import { ProgramsView } from './Programs';
@@ -300,6 +301,7 @@ export function App() {
           <button className={tab === 'plans' ? 'active' : ''} onClick={() => setTab('plans')}>Plans</button>
           <button className={tab === 'pricing' ? 'active' : ''} onClick={() => setTab('pricing')}>Pricing</button>
           <button className={tab === 'onboarding' ? 'active' : ''} onClick={() => setTab('onboarding')}>Plan options</button>
+          <button className={tab === 'features' ? 'active' : ''} onClick={() => setTab('features')}>Features</button>
           <button className={tab === 'notify' ? 'active' : ''} onClick={() => setTab('notify')}>Announcements</button>
           <div className="nav-sep">Care</div>
           <button className={tab === 'programs' ? 'active' : ''} onClick={() => setTab('programs')}>Programs</button>
@@ -321,6 +323,7 @@ export function App() {
           : tab === 'revenue' ? <RevenueView />
           : tab === 'pricing' ? <PricingView />
           : tab === 'onboarding' ? <OnboardingView />
+          : tab === 'features' ? <FeaturesView />
           : tab === 'notify' ? <NotifyView />
           : tab === 'customers' ? <CustomersView />
           : tab === 'plans' ? <PlansView />

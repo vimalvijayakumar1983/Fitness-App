@@ -70,3 +70,27 @@ export const DEFAULT_ONBOARDING: OnboardingOptions = {
 
 export const getOnboarding = (): Promise<OnboardingOptions> => getSetting<OnboardingOptions>('onboarding', DEFAULT_ONBOARDING);
 export const setOnboarding = (o: OnboardingOptions): Promise<void> => setSetting('onboarding', o);
+
+/** Which features require Premium ('premium') vs are free ('free'). */
+export type FeatureGates = Record<string, 'free' | 'premium'>;
+
+export const DEFAULT_FEATURES: FeatureGates = {
+  ai_coach: 'premium',
+  ai_food_photo: 'premium',
+  lab_analysis: 'premium',
+  meal_plan: 'premium',
+  coaching: 'premium',
+  programs: 'free',
+  longevity: 'free',
+  glucose: 'free',
+  family: 'free',
+  week_review: 'free',
+  challenges: 'free',
+};
+
+/** Merge stored gates over defaults so newly-added features have a sane tier. */
+export async function getFeatures(): Promise<FeatureGates> {
+  const stored = await getSetting<FeatureGates>('features', {});
+  return { ...DEFAULT_FEATURES, ...stored };
+}
+export const setFeatures = (f: FeatureGates): Promise<void> => setSetting('features', f);

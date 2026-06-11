@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { db } from '../db';
 import { AuthedRequest, requireAuth, requireAdmin } from '../auth';
 import { makeId } from '../util';
-import { getPricing, setPricing, Pricing, getOnboarding, setOnboarding, OnboardingOptions } from '../settings';
+import { getPricing, setPricing, Pricing, getOnboarding, setOnboarding, OnboardingOptions, getFeatures, setFeatures, FeatureGates } from '../settings';
 import { importCatalog } from '../seed/content';
 import { sendPush, tokensForUsers } from '../push';
 
@@ -189,6 +189,17 @@ adminRouter.put('/onboarding-options', async (req: Request, res: Response) => {
   }
   await setOnboarding(o);
   res.json(await getOnboarding());
+});
+
+// ───────────────────── Feature gates (free vs premium) ─────────────────────
+adminRouter.get('/feature-gates', async (_req, res) => res.json(await getFeatures()));
+adminRouter.put('/feature-gates', async (req: Request, res: Response) => {
+  const f = req.body as FeatureGates;
+  if (!f || typeof f !== 'object') return res.status(400).json({ error: 'Invalid feature gates.' });
+  const clean: FeatureGates = {};
+  for (const [k, v] of Object.entries(f)) clean[k] = v === 'premium' ? 'premium' : 'free';
+  await setFeatures(clean);
+  res.json(await getFeatures());
 });
 
 // ───────────────────── Push announcements (broadcast) ─────────────────────

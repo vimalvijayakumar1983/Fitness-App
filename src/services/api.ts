@@ -245,6 +245,7 @@ export const api = {
   contentAll: () => request<CmsContent>('/content/all', { auth: false }),
   getPricing: () => request<PricingConfig>('/content/pricing', { auth: false }),
   getOnboardingOptions: () => request<OnboardingOptions>('/content/onboarding', { auth: false }),
+  getFeatures: () => request<Record<string, 'free' | 'premium'>>('/content/features', { auth: false }),
 
   // ── Phase 2: condition-reversal programs ──
   listPrograms: () => request<Program[]>('/programs', { auth: false }),

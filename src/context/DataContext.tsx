@@ -47,6 +47,10 @@ interface DataContextValue {
   subscription: Subscription | null;
   isPremium: boolean;
   refreshSubscription: () => void;
+  /** Admin-defined feature → tier map ('free' | 'premium'). */
+  features: Record<string, 'free' | 'premium'>;
+  /** True when a feature requires Premium and the user isn't premium. */
+  featureLocked: (key: string) => boolean;
 
   addMeal: (meal: Omit<MealEntry, 'id' | 'loggedAt'>) => void;
   addExercise: (exercise: Omit<ExerciseEntry, 'id' | 'loggedAt'>) => void;
@@ -96,9 +100,12 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   const skipPush = useRef(false);
   const pushTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Pull admin-managed content from the backend (best-effort; offline-safe).
+  const [features, setFeatures] = useState<Record<string, 'free' | 'premium'>>({});
+
+  // Pull admin-managed content + feature gates from the backend (offline-safe).
   useEffect(() => {
     fetchCmsContent().then(setCms).catch(() => {});
+    api.getFeatures().then(setFeatures).catch(() => {});
   }, []);
 
   const refreshSubscription = useCallback(() => {
@@ -403,6 +410,12 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     });
   }, []);
 
+  const isPremium = !!subscription?.isPremium;
+  const featureLocked = useCallback(
+    (key: string) => features[key] === 'premium' && !isPremium,
+    [features, isPremium],
+  );
+
   const value = useMemo<DataContextValue>(
     () => ({
       data,
@@ -411,8 +424,10 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       syncing,
       assignedPlan,
       subscription,
-      isPremium: !!subscription?.isPremium,
+      isPremium,
       refreshSubscription,
+      features,
+      featureLocked,
       addMeal,
       addExercise,
       addMood,
@@ -443,7 +458,10 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       syncing,
       assignedPlan,
       subscription,
+      isPremium,
       refreshSubscription,
+      features,
+      featureLocked,
       addMeal,
       addExercise,
       addMood,

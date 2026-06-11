@@ -12,6 +12,7 @@ import { MacroSummary } from '@/components/MacroSummary';
 import { WaterTracker } from '@/components/WaterTracker';
 import { FoodSearchModal } from '@/components/FoodSearchModal';
 import { PhotoLogModal } from '@/components/PhotoLogModal';
+import { PaywallModal } from '@/components/PaywallModal';
 import { useData } from '@/context/DataContext';
 import { useI18n } from '@/i18n';
 import { colors, gradients, radius, spacing, type } from '@/theme/colors';
@@ -28,7 +29,8 @@ const MEAL_TYPES: { label: string; value: MealType }[] = [
 ];
 
 export function MealsScreen() {
-  const { data, cms, addMeal, addWater, removeEntry, toggleFavoriteFood, upsertCustomFood, deleteCustomFood } = useData();
+  const { data, cms, addMeal, addWater, removeEntry, toggleFavoriteFood, upsertCustomFood, deleteCustomFood, featureLocked } = useData();
+  const [paywallOpen, setPaywallOpen] = useState(false);
   const { t } = useI18n();
   const [type_, setType] = useState<MealType>('breakfast');
   const [name, setName] = useState('');
@@ -80,7 +82,7 @@ export function MealsScreen() {
 
         <PrimaryButton
           label={t('meals.snap')}
-          onPress={() => setPhotoOpen(true)}
+          onPress={() => (featureLocked('ai_food_photo') ? setPaywallOpen(true) : setPhotoOpen(true))}
           gradient={gradients.primary}
           style={{ marginTop: spacing.lg }}
         />
@@ -152,6 +154,7 @@ export function MealsScreen() {
         onAdd={onAddFromSearch}
       />
 
+      <PaywallModal visible={paywallOpen} onClose={() => setPaywallOpen(false)} />
       <PhotoLogModal
         visible={photoOpen}
         mealType={type_}

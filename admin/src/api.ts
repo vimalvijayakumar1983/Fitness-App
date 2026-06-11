@@ -91,6 +91,10 @@ export const api = {
   getOnboarding: <T>() => req<T>('GET', '/api/admin/onboarding-options'),
   saveOnboarding: <T>(body: unknown) => req<T>('PUT', '/api/admin/onboarding-options', body),
 
+  // ── Feature gates (free vs premium) ──
+  getFeatures: <T>() => req<T>('GET', '/api/admin/feature-gates'),
+  saveFeatures: <T>(body: unknown) => req<T>('PUT', '/api/admin/feature-gates', body),
+
   // ── Push announcements ──
   announce: <T>(body: unknown) => req<T>('POST', '/api/admin/announce', body),
 
