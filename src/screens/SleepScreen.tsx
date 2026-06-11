@@ -9,6 +9,7 @@ import { EntryRow } from '@/components/EntryRow';
 import { EmptyState } from '@/components/EmptyState';
 import { SectionHeader } from '@/components/SectionHeader';
 import { useData } from '@/context/DataContext';
+import { useI18n } from '@/i18n';
 import { colors, gradients, spacing } from '@/theme/colors';
 import { MoodScore } from '@/models/types';
 import { formatDuration, formatTime, todayISO } from '@/utils/date';
@@ -27,6 +28,7 @@ function parseClock(value: string): number | null {
 
 export function SleepScreen() {
   const { data, addSleep, removeEntry, syncHealthData } = useData();
+  const { t } = useI18n();
   const [bedtime, setBedtime] = useState('23:00');
   const [wakeTime, setWakeTime] = useState('07:00');
   const [quality, setQuality] = useState<MoodScore>(4);
@@ -62,7 +64,7 @@ export function SleepScreen() {
   };
 
   return (
-    <ScreenContainer title="Sleep" subtitle="Recovery" onRefresh={onSync} refreshing={syncing}>
+    <ScreenContainer title={t('nav.sleep')} subtitle={t('sleep.subtitle')} onRefresh={onSync} refreshing={syncing}>
       <Card title="Log sleep">
         <View style={{ flexDirection: 'row', gap: spacing.md }}>
           <TextField

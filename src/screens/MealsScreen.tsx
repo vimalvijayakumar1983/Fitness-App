@@ -13,6 +13,7 @@ import { WaterTracker } from '@/components/WaterTracker';
 import { FoodSearchModal } from '@/components/FoodSearchModal';
 import { PhotoLogModal } from '@/components/PhotoLogModal';
 import { useData } from '@/context/DataContext';
+import { useI18n } from '@/i18n';
 import { colors, gradients, radius, spacing, type } from '@/theme/colors';
 import { FoodItem, MealType } from '@/models/types';
 import { summarizeMacros, waterMl } from '@/utils/selectors';
@@ -28,6 +29,7 @@ const MEAL_TYPES: { label: string; value: MealType }[] = [
 
 export function MealsScreen() {
   const { data, cms, addMeal, addWater, removeEntry, toggleFavoriteFood, upsertCustomFood, deleteCustomFood } = useData();
+  const { t } = useI18n();
   const [type_, setType] = useState<MealType>('breakfast');
   const [name, setName] = useState('');
   const [calories, setCalories] = useState('');
@@ -56,9 +58,9 @@ export function MealsScreen() {
   };
 
   return (
-    <ScreenContainer title="Meals" subtitle="Nutrition">
+    <ScreenContainer title={t('nav.meals')} subtitle={t('meals.subtitle')}>
       {/* Daily macro summary */}
-      <Card title="Today">
+      <Card title={t('meals.today')}>
         <MacroSummary
           totals={macros}
           calorieTarget={data.profile.calorieTarget}
@@ -67,23 +69,23 @@ export function MealsScreen() {
       </Card>
 
       {/* Water */}
-      <Card title="Water">
+      <Card title={t('meals.water')}>
         <WaterTracker ml={water} goalMl={data.profile.waterGoalMl} onAdd={(ml) => addWater(ml)} />
       </Card>
 
       {/* Log a meal */}
-      <Card title="Log a meal">
+      <Card title={t('meals.logMeal')}>
         <Text style={type.label}>Meal</Text>
         <SegmentedSelector options={MEAL_TYPES} value={type_} onChange={setType} accent={colors.meal} />
 
         <PrimaryButton
-          label="📸 Snap or scan a meal"
+          label={t('meals.snap')}
           onPress={() => setPhotoOpen(true)}
           gradient={gradients.primary}
           style={{ marginTop: spacing.lg }}
         />
         <PrimaryButton
-          label="🔍 Search foods"
+          label={t('meals.search')}
           onPress={() => setSearchOpen(true)}
           gradient={gradients.meal}
           variant="soft"
@@ -93,20 +95,20 @@ export function MealsScreen() {
 
         <View style={styles.divider}>
           <View style={styles.line} />
-          <Text style={styles.dividerText}>or quick add</Text>
+          <Text style={styles.dividerText}>{t('meals.quickAdd')}</Text>
           <View style={styles.line} />
         </View>
 
-        <TextField label="Food" placeholder="e.g. Oatmeal with banana" value={name} onChangeText={setName} />
+        <TextField label={t('meals.food')} placeholder="e.g. Oatmeal with banana" value={name} onChangeText={setName} />
         <TextField
-          label="Calories (optional)"
+          label={t('meals.caloriesOpt')}
           placeholder="e.g. 320"
           keyboardType="number-pad"
           value={calories}
           onChangeText={setCalories}
         />
         <PrimaryButton
-          label="Add manually"
+          label={t('meals.addManual')}
           onPress={onManualSave}
           gradient={gradients.coral}
           disabled={!canSave}
@@ -114,10 +116,10 @@ export function MealsScreen() {
         />
       </Card>
 
-      <SectionHeader title="Today's meals" trailing={macros.calories > 0 ? `${macros.calories} kcal` : undefined} />
+      <SectionHeader title={t('meals.todays')} trailing={macros.calories > 0 ? `${macros.calories} kcal` : undefined} />
       {todaysMeals.length === 0 ? (
         <Card>
-          <EmptyState emoji="🥗" text="No meals logged yet today. Search foods or quick-add above." />
+          <EmptyState emoji="🥗" text={t('meals.empty')} />
         </Card>
       ) : (
         todaysMeals.map((meal) => {

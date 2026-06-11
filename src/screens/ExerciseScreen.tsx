@@ -10,6 +10,7 @@ import { SectionHeader } from '@/components/SectionHeader';
 import { IconBadge } from '@/components/IconBadge';
 import { ExercisePickerModal } from '@/components/ExercisePickerModal';
 import { useData } from '@/context/DataContext';
+import { useI18n } from '@/i18n';
 import { colors, gradients, radius, spacing, type } from '@/theme/colors';
 import { activeProviderName } from '@/services/health/healthService';
 import { estimateCalories } from '@/data/exercises';
@@ -18,6 +19,7 @@ import { formatDuration, formatTime, todayISO } from '@/utils/date';
 
 export function ExerciseScreen() {
   const { data, cms, addExercise, removeEntry, syncHealthData, upsertCustomExercise, deleteCustomExercise } = useData();
+  const { t } = useI18n();
   const [activity, setActivity] = useState('');
   const [duration, setDuration] = useState('');
   const [calories, setCalories] = useState('');
@@ -56,17 +58,17 @@ export function ExerciseScreen() {
   };
 
   return (
-    <ScreenContainer title="Exercise" subtitle="Movement" onRefresh={onSync} refreshing={syncing}>
+    <ScreenContainer title={t('nav.exercise')} subtitle={t('exercise.subtitle')} onRefresh={onSync} refreshing={syncing}>
       <Card padded={false} style={styles.syncCard}>
         <View style={styles.syncRow}>
           <IconBadge emoji="⌚" colors={gradients.exercise} size={46} />
           <View style={{ flex: 1, marginLeft: spacing.md }}>
-            <Text style={styles.syncTitle}>Smartwatch</Text>
+            <Text style={styles.syncTitle}>{t('exercise.smartwatch')}</Text>
             <Text style={type.caption}>Connected: {activeProviderName()}</Text>
           </View>
         </View>
         <PrimaryButton
-          label={syncing ? 'Syncing…' : 'Sync now'}
+          label={syncing ? 'Syncing…' : t('exercise.syncNow')}
           onPress={onSync}
           variant="soft"
           color={colors.exercise}
@@ -76,7 +78,7 @@ export function ExerciseScreen() {
       </Card>
 
       {/* Wearables / devices */}
-      <Card title="Connect a device">
+      <Card title={t('exercise.connectDevice')}>
         {[
           { name: 'Apple Health', emoji: '🍎' },
           { name: 'Google Fit', emoji: '🟢' },
@@ -93,9 +95,9 @@ export function ExerciseScreen() {
         <Text style={styles.deviceNote}>Live device sync (Apple Health / Health Connect / Fitbit) activates in the mobile app. On web, "Connect" pulls demo data.</Text>
       </Card>
 
-      <Card title="Log a workout">
+      <Card title={t('exercise.logWorkout')}>
         <PrimaryButton
-          label="🏋️ Browse exercise library"
+          label={t('exercise.browse')}
           onPress={() => setPickerOpen(true)}
           gradient={gradients.exercise}
         />
@@ -107,7 +109,7 @@ export function ExerciseScreen() {
         </View>
 
         <TextField
-          label="Activity"
+          label={t('exercise.activity')}
           placeholder="e.g. Running"
           value={activity}
           onChangeText={(t) => {
@@ -116,14 +118,14 @@ export function ExerciseScreen() {
           }}
         />
         <TextField
-          label="Duration (min)"
+          label={t('exercise.duration')}
           placeholder="e.g. 30"
           keyboardType="number-pad"
           value={duration}
           onChangeText={setDuration}
         />
         <TextField
-          label="Calories burned (optional)"
+          label={t('exercise.caloriesOpt')}
           placeholder={estimate ? `≈ ${estimate}` : 'e.g. 250'}
           keyboardType="number-pad"
           value={calories}
@@ -135,7 +137,7 @@ export function ExerciseScreen() {
           </Text>
         ) : null}
         <PrimaryButton
-          label="Add workout"
+          label={t('exercise.add')}
           onPress={onSave}
           gradient={gradients.primary}
           disabled={!canSave}
@@ -143,10 +145,10 @@ export function ExerciseScreen() {
         />
       </Card>
 
-      <SectionHeader title="Today's activity" />
+      <SectionHeader title={t('exercise.todays')} />
       {todays.length === 0 ? (
         <Card>
-          <EmptyState emoji="🏃" text="Nothing logged yet. Sync your watch or add a workout above." />
+          <EmptyState emoji="🏃" text={t('exercise.empty')} />
         </Card>
       ) : (
         todays.map((ex) => (

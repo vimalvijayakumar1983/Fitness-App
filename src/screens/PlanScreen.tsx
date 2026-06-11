@@ -10,6 +10,7 @@ import { RecipeLibraryModal } from '@/components/RecipeLibraryModal';
 import { RecipeDetailModal } from '@/components/RecipeDetailModal';
 import { PaywallModal } from '@/components/PaywallModal';
 import { useData } from '@/context/DataContext';
+import { useI18n } from '@/i18n';
 import { colors, gradients, radius, spacing, type } from '@/theme/colors';
 import type { GoalType, MealType, Recipe } from '@/models/types';
 import { mergeRecipes, recipesById } from '@/data/recipes';
@@ -29,6 +30,7 @@ const GOAL_CARDS: { goal: GoalType; emoji: string; blurb: string }[] = [
 
 export function PlanScreen() {
   const { data, cms, assignedPlan, isPremium, addMeal, updateProfile, setPlan } = useData();
+  const { t } = useI18n();
   const [setupOpen, setSetupOpen] = useState(false);
   const [libraryOpen, setLibraryOpen] = useState(false);
   const [detail, setDetail] = useState<Recipe | null>(null);
@@ -77,7 +79,7 @@ export function PlanScreen() {
     });
 
   return (
-    <ScreenContainer title="Plan" subtitle="Your meal planner">
+    <ScreenContainer title={t('nav.plan')} subtitle={t('plan.subtitle')}>
       {/* Goal picker (Delicut-style, goal-led) */}
       <Text style={styles.goalHeading}>What's your goal?</Text>
       <View style={styles.goalRow}>

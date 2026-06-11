@@ -8,6 +8,7 @@ import { PrimaryButton } from '@/components/PrimaryButton';
 import { ProgramDetailModal } from '@/components/ProgramDetailModal';
 import { CoachingModal } from '@/components/CoachingModal';
 import { useAuth } from '@/context/AuthContext';
+import { useI18n } from '@/i18n';
 import { api } from '@/services/api';
 import { colors, gradients, hexA, radius, spacing, type } from '@/theme/colors';
 import type { Coach, CoachBooking, Company, Enrollment, Program } from '@/models/types';
@@ -18,6 +19,7 @@ const CONDITION_EMOJI: Record<string, string> = {
 
 export function CareScreen() {
   const { token } = useAuth();
+  const { t } = useI18n();
   const hasAccount = !!token;
 
   const [programs, setPrograms] = useState<Program[]>([]);
@@ -121,7 +123,7 @@ export function CareScreen() {
   };
 
   return (
-    <ScreenContainer title="Care" subtitle="Programs · Coaching · Workplace">
+    <ScreenContainer title={t('nav.care')} subtitle={t('care.subtitle')}>
       {/* Active program spotlight */}
       {activeProgram && activeEnrollment ? (
         <Pressable onPress={() => setOpenProgram(activeProgram)}>
@@ -135,7 +137,7 @@ export function CareScreen() {
       ) : null}
 
       {/* Reversal programs */}
-      <SectionHeader title="Reversal programs" />
+      <SectionHeader title={t('care.programs')} />
       <Text style={styles.lead}>Structured, evidence-based programs to reverse and manage chronic conditions — guided week by week.</Text>
       {programs.map((p) => {
         const enr = enrollmentFor(p.id);
@@ -162,7 +164,7 @@ export function CareScreen() {
       })}
 
       {/* Coaching */}
-      <SectionHeader title="1:1 Coaching" />
+      <SectionHeader title={t('care.coaching')} />
       <Card>
         {bookedCoach ? (
           <View style={styles.coachActive}>
@@ -176,7 +178,7 @@ export function CareScreen() {
           <Text style={styles.cardLead}>Work 1:1 with a vetted endocrinologist, dietitian or coach who tailors your plan and keeps you accountable.</Text>
         )}
         <PrimaryButton
-          label={bookedCoach ? 'Manage coaching' : 'Find a coach'}
+          label={bookedCoach ? t('care.manageCoaching') : t('care.findCoach')}
           onPress={() => setCoachingOpen(true)}
           gradient={gradients.primary}
           style={{ marginTop: spacing.md }}
@@ -184,7 +186,7 @@ export function CareScreen() {
       </Card>
 
       {/* Corporate wellness */}
-      <SectionHeader title="Workplace wellness" />
+      <SectionHeader title={t('care.workplace')} />
       <Card>
         {company ? (
           <>

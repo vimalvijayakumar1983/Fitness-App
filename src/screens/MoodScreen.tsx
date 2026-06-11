@@ -8,6 +8,7 @@ import { EntryRow } from '@/components/EntryRow';
 import { EmptyState } from '@/components/EmptyState';
 import { SectionHeader } from '@/components/SectionHeader';
 import { useData } from '@/context/DataContext';
+import { useI18n } from '@/i18n';
 import { colors, gradients, spacing } from '@/theme/colors';
 import { MoodScore } from '@/models/types';
 import { formatTime, todayISO } from '@/utils/date';
@@ -16,6 +17,7 @@ const MOOD_FACES = ['😞', '😕', '😐', '🙂', '😄'] as const;
 
 export function MoodScreen() {
   const { data, addMood, removeEntry } = useData();
+  const { t } = useI18n();
   const [mood, setMood] = useState<MoodScore>(3);
   const [stress, setStress] = useState<MoodScore>(3);
   const [energy, setEnergy] = useState<MoodScore>(3);
@@ -33,7 +35,7 @@ export function MoodScreen() {
   };
 
   return (
-    <ScreenContainer title="Mind" subtitle="Wellbeing">
+    <ScreenContainer title={t('nav.mind')} subtitle={t('mind.subtitle')}>
       <Card title="How are you feeling?">
         <RatingSelector label="Mood" value={mood} onChange={setMood} scale={MOOD_FACES} accent={colors.mind} />
         <RatingSelector
