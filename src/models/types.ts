@@ -388,6 +388,17 @@ export interface AppData {
   glucose: GlucoseReading[];
   /** Household members tracked under this account. */
   family: FamilyMember[];
+  /** Local reminder preferences. */
+  reminders?: ReminderPrefs;
+}
+
+/** Local notification reminder preferences. */
+export interface ReminderPrefs {
+  dailyLog: boolean;
+  /** "HH:MM" 24h local time. */
+  dailyTime: string;
+  glucose: boolean;
+  weeklyReview: boolean;
 }
 
 export const DEFAULT_PROFILE: Profile = {
@@ -422,4 +433,5 @@ export const emptyAppData: AppData = {
   labs: [],
   glucose: [],
   family: [],
+  reminders: { dailyLog: true, dailyTime: '20:00', glucose: false, weeklyReview: true },
 };

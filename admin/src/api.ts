@@ -86,6 +86,9 @@ export const api = {
   seedCatalog: <T>() => req<T>('POST', '/api/admin/seed-catalog'),
   getPricing: <T>() => req<T>('GET', '/api/admin/pricing'),
   savePricing: <T>(body: unknown) => req<T>('PUT', '/api/admin/pricing', body),
+
+  // ── Push announcements ──
+  announce: <T>(body: unknown) => req<T>('POST', '/api/admin/announce', body),
 };
 
 export { API_URL };

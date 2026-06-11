@@ -5,6 +5,7 @@ import { AuthedRequest, requireAuth, requireAdmin } from '../auth';
 import { makeId } from '../util';
 import { getPricing, setPricing, Pricing } from '../settings';
 import { importCatalog } from '../seed/content';
+import { sendPush, tokensForUsers } from '../push';
 
 /**
  * Stage 2 — Plans & CRM.
@@ -175,6 +176,21 @@ adminRouter.put('/pricing', (req: Request, res: Response) => {
   if (!p?.premium || !p?.coached) return res.status(400).json({ error: 'Invalid pricing.' });
   setPricing(p);
   res.json(getPricing());
+});
+
+// ───────────────────── Push announcements (broadcast) ─────────────────────
+adminRouter.post('/announce', async (req: Request, res: Response) => {
+  const title = String(req.body?.title ?? '').trim().slice(0, 120);
+  const body = String(req.body?.body ?? '').trim().slice(0, 500);
+  const segmentId = req.body?.segmentId ? String(req.body.segmentId) : null;
+  if (!title || !body) return res.status(400).json({ error: 'Title and body are required.' });
+
+  const users = (segmentId
+    ? db.prepare('SELECT id FROM users WHERE segment_id = ?').all(segmentId)
+    : db.prepare("SELECT id FROM users WHERE role = 'customer'").all()) as { id: string }[];
+  const tokens = tokensForUsers(users.map((u) => u.id));
+  const result = await sendPush(tokens, { title, body, data: { type: 'announcement' } });
+  res.json({ ok: true, recipients: users.length, devices: tokens.length, ...result });
 });
 
 // ───────────────────────── Reports / analytics ─────────────────────────
@@ -383,6 +399,18 @@ mePlanRouter.get('/export', (req: AuthedRequest, res: Response) => {
     programEnrollments: enrollments.map((e) => ({ ...e, completed_tasks: JSON.parse(e.completed_tasks || '[]') })),
     coaching: { bookings, messages },
   });
+});
+
+/** POST /api/me/push-token — register this device's Expo push token. */
+mePlanRouter.post('/push-token', (req: AuthedRequest, res: Response) => {
+  const token = String(req.body?.token ?? '').trim();
+  const platform = String(req.body?.platform ?? '').slice(0, 20);
+  if (!token) return res.status(400).json({ error: 'Missing token.' });
+  db.prepare(
+    `INSERT INTO push_tokens (token, user_id, platform, updated_at) VALUES (?, ?, ?, ?)
+     ON CONFLICT(token) DO UPDATE SET user_id=excluded.user_id, platform=excluded.platform, updated_at=excluded.updated_at`,
+  ).run(token, req.userId, platform || null, now());
+  res.json({ ok: true });
 });
 
 /** DELETE /api/me/account — permanently deletes the account and all data. */

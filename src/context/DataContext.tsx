@@ -1,3 +1,4 @@
+import { Platform } from 'react-native';
 import React, {
   createContext,
   useCallback,
@@ -23,10 +24,12 @@ import {
   LabReport,
   GlucoseReading,
   FamilyMember,
+  ReminderPrefs,
 } from '@/models/types';
 import { loadAppData, saveAppData } from '@/services/storage';
 import { getHealthProvider } from '@/services/health/healthService';
 import { api, fetchCmsContent, CmsContent, AssignedPlan, Subscription } from '@/services/api';
+import { syncReminders, registerForPush } from '@/services/notifications';
 import { useAuth } from '@/context/AuthContext';
 import { makeId, todayISO } from '@/utils/date';
 
@@ -68,6 +71,7 @@ interface DataContextValue {
   addGlucoseBatch: (readings: Omit<GlucoseReading, 'id'>[]) => void;
   upsertFamilyMember: (member: FamilyMember) => void;
   removeFamilyMember: (id: string) => void;
+  setReminders: (prefs: ReminderPrefs) => void;
 
   removeEntry: (
     kind: 'meals' | 'exercises' | 'moods' | 'sleep' | 'water' | 'weights' | 'labs' | 'glucose',
@@ -177,6 +181,22 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (!loading) void saveAppData(data);
   }, [data, loading]);
+
+  // Schedule local reminders once after load (native only; no-op on web).
+  const remindersSynced = useRef(false);
+  useEffect(() => {
+    if (loading || remindersSynced.current) return;
+    remindersSynced.current = true;
+    if (data.reminders) void syncReminders(data.reminders);
+  }, [loading, data.reminders]);
+
+  // Register for remote push when signed in (native only).
+  useEffect(() => {
+    if (!token) return;
+    registerForPush().then((pt) => {
+      if (pt) api.registerPushToken(pt, Platform.OS).catch(() => {});
+    });
+  }, [token]);
 
   const addMeal = useCallback((meal: Omit<MealEntry, 'id' | 'loggedAt'>) => {
     setData((prev) => ({
@@ -337,6 +357,11 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     setData((prev) => ({ ...prev, family: prev.family.filter((m) => m.id !== id) }));
   }, []);
 
+  const setReminders = useCallback((prefs: ReminderPrefs) => {
+    setData((prev) => ({ ...prev, reminders: prefs }));
+    void syncReminders(prefs);
+  }, []);
+
   const removeEntry = useCallback(
     (kind: 'meals' | 'exercises' | 'moods' | 'sleep' | 'water' | 'weights' | 'labs' | 'glucose', id: string) => {
       setData((prev) => ({
@@ -405,6 +430,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       addGlucoseBatch,
       upsertFamilyMember,
       removeFamilyMember,
+      setReminders,
       removeEntry,
       syncHealthData,
     }),
@@ -435,6 +461,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       addGlucoseBatch,
       upsertFamilyMember,
       removeFamilyMember,
+      setReminders,
       removeEntry,
       syncHealthData,
     ],

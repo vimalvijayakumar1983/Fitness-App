@@ -182,6 +182,10 @@ export const api = {
   exportData: () => request<Record<string, unknown>>('/me/export'),
   deleteAccount: () => request<{ ok: boolean }>('/me/account', { method: 'DELETE' }),
 
+  // Push notifications: register this device's Expo push token.
+  registerPushToken: (token: string, platform: string) =>
+    request<{ ok: boolean }>('/me/push-token', { method: 'POST', body: { token, platform } }),
+
   // AI lab report analysis
   analyzeLab: (imageBase64: string, mediaType: string) =>
     request<{ summary: string; markers: LabMarker[]; offline?: boolean }>('/labs/analyze', {

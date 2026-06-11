@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Modal, Pressable, StyleSheet, Switch, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { TextField } from './TextField';
 import { PrimaryButton } from './PrimaryButton';
@@ -8,6 +8,7 @@ import { useAuth } from '@/context/AuthContext';
 import { useData } from '@/context/DataContext';
 import { api, apiEnabled } from '@/services/api';
 import { useI18n } from '@/i18n';
+import { DEFAULT_REMINDERS, pushSupported } from '@/services/notifications';
 import { colors, gradients, radius, spacing, type } from '@/theme/colors';
 import { Alert, Linking, Platform } from 'react-native';
 
@@ -19,7 +20,8 @@ interface Props {
 /** Sign up / log in, and show cloud-sync status for the signed-in user. */
 export function AccountModal({ visible, onClose }: Props) {
   const { user, login, register, logout } = useAuth();
-  const { syncing, subscription, isPremium, refreshSubscription } = useData();
+  const { syncing, subscription, isPremium, refreshSubscription, data, setReminders } = useData();
+  const reminders = data.reminders ?? DEFAULT_REMINDERS;
   const { lang, setLang, t } = useI18n();
   const [paywallOpen, setPaywallOpen] = useState(false);
   const [mode, setMode] = useState<'login' | 'register' | 'forgot' | 'reset'>('login');
@@ -170,6 +172,24 @@ export function AccountModal({ visible, onClose }: Props) {
                   )}
                 </View>
 
+                {/* Reminders */}
+                <View style={[styles.card, { marginTop: spacing.md }]}>
+                  <Text style={styles.label}>Reminders</Text>
+                  <View style={styles.remRow}>
+                    <Text style={styles.remLabel}>Daily log reminder</Text>
+                    <Switch value={reminders.dailyLog} onValueChange={(v) => setReminders({ ...reminders, dailyLog: v })} trackColor={{ true: colors.primary }} />
+                  </View>
+                  <View style={styles.remRow}>
+                    <Text style={styles.remLabel}>Morning glucose reminder</Text>
+                    <Switch value={reminders.glucose} onValueChange={(v) => setReminders({ ...reminders, glucose: v })} trackColor={{ true: colors.primary }} />
+                  </View>
+                  <View style={styles.remRow}>
+                    <Text style={styles.remLabel}>Weekly review (Sun)</Text>
+                    <Switch value={reminders.weeklyReview} onValueChange={(v) => setReminders({ ...reminders, weeklyReview: v })} trackColor={{ true: colors.primary }} />
+                  </View>
+                  {!pushSupported ? <Text style={[styles.note, { marginTop: 4 }]}>Reminders are delivered as notifications in the mobile app.</Text> : null}
+                </View>
+
                 {/* Language */}
                 <View style={[styles.card, { marginTop: spacing.md }]}>
                   <Text style={styles.label}>{t('account.language')}</Text>
@@ -264,6 +284,8 @@ const styles = StyleSheet.create({
   syncText: { ...type.caption, color: colors.textSecondary },
   note: { ...type.caption, marginTop: spacing.lg, lineHeight: 19 },
   subActions: { flexDirection: 'row', gap: spacing.sm, marginTop: spacing.md },
+  remRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: spacing.sm },
+  remLabel: { ...type.body, fontWeight: '600' },
   langRow: { flexDirection: 'row', gap: spacing.sm, marginTop: spacing.md },
   langChip: { flex: 1, alignItems: 'center', paddingVertical: 10, borderRadius: radius.md, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface },
   langChipOn: { backgroundColor: colors.primary, borderColor: colors.primary },

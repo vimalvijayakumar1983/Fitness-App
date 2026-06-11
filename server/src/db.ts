@@ -288,6 +288,15 @@ export function initSchema(): void {
     );
     CREATE INDEX IF NOT EXISTS idx_msg_booking ON coach_messages(booking_id);
 
+    -- Expo push tokens per device, for remote notifications.
+    CREATE TABLE IF NOT EXISTS push_tokens (
+      token TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      platform TEXT,
+      updated_at TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_push_user ON push_tokens(user_id);
+
     -- Password-reset codes (hashed), short-lived.
     CREATE TABLE IF NOT EXISTS password_resets (
       user_id TEXT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
