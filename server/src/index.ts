@@ -73,6 +73,37 @@ app.use('/api/analytics', analyticsRouter);
 app.use('/api/coach', coachRouter);
 app.use('/api', logsRouter); // /api/meals, /api/exercises, /api/moods, /api/sleep, /api/weights, /api/water
 
+// Optional error monitoring (Sentry) — only when SENTRY_DSN is set and the
+// package is installed. No hard dependency, so it's a no-op otherwise.
+let sentry: any = null;
+try {
+  if (process.env.SENTRY_DSN) {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    sentry = require('@sentry/node');
+    sentry.init({ dsn: process.env.SENTRY_DSN, tracesSampleRate: 0.1 });
+  }
+} catch {
+  sentry = null;
+}
+
+// Centralized error handler: logs (and reports), returns a clean JSON error.
+app.use((err: any, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
+  console.error('Unhandled error:', err);
+  if (sentry) sentry.captureException(err);
+  if (res.headersSent) return;
+  res.status(err?.status || 500).json({ error: err?.message || 'Internal server error.' });
+});
+
+// Last-resort process guards so a stray rejection doesn't crash the server.
+process.on('unhandledRejection', (reason) => {
+  console.error('Unhandled rejection:', reason);
+  if (sentry) sentry.captureException(reason);
+});
+process.on('uncaughtException', (err) => {
+  console.error('Uncaught exception:', err);
+  if (sentry) sentry.captureException(err);
+});
+
 // Initialize the database, run migrations, seed foods and the admin account.
 initSchema();
 migrate();
