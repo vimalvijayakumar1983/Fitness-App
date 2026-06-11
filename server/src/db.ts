@@ -288,6 +288,17 @@ export function initSchema(): void {
     );
     CREATE INDEX IF NOT EXISTS idx_msg_booking ON coach_messages(booking_id);
 
+    -- Health-data integrations: links a connection token to a user so an
+    -- aggregator (Terra/Rook/Apple Health bridge) can post readings by webhook.
+    CREATE TABLE IF NOT EXISTS integration_links (
+      token TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      provider TEXT,
+      created_at TEXT NOT NULL,
+      last_sync_at TEXT
+    );
+    CREATE INDEX IF NOT EXISTS idx_intlink_user ON integration_links(user_id);
+
     -- Community challenges (admin-managed, public read) + participation.
     CREATE TABLE IF NOT EXISTS challenges (
       id TEXT PRIMARY KEY,
