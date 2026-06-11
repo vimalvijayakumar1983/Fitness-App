@@ -31,10 +31,10 @@ export function RevenueView() {
       </p>
 
       <div className="kpi-grid">
-        <Kpi label="MRR" value={`$${r.mrr.toLocaleString()}`} sub="monthly recurring" accent />
-        <Kpi label="ARR" value={`$${r.arr.toLocaleString()}`} sub="annual run-rate" />
-        <Kpi label="ARPU" value={`$${r.arpu}`} sub="per paying user" />
-        <Kpi label="Net new MRR (30d)" value={`${r.movement.netMrr >= 0 ? '+' : ''}$${r.movement.netMrr}`} sub={`+$${r.movement.newMrr} new · -$${r.movement.churnedMrr} churned`} />
+        <Kpi label="MRR" value={`AED ${r.mrr.toLocaleString()}`} sub="monthly recurring" accent />
+        <Kpi label="ARR" value={`AED ${r.arr.toLocaleString()}`} sub="annual run-rate" />
+        <Kpi label="ARPU" value={`AED ${r.arpu}`} sub="per paying user" />
+        <Kpi label="Net new MRR (30d)" value={`${r.movement.netMrr >= 0 ? '+' : ''}AED ${r.movement.netMrr}`} sub={`+AED ${r.movement.newMrr} new · -AED ${r.movement.churnedMrr} churned`} />
         <Kpi label="Paying" value={r.paying} sub="active subscriptions" />
       </div>
 
@@ -42,9 +42,9 @@ export function RevenueView() {
         <h3>MRR · last 12 weeks</h3>
         <div className="bars">
           {r.mrrSeries.map((d, i) => (
-            <div className="bar-col" key={i} title={`${d.label}: $${d.mrr}`}>
+            <div className="bar-col" key={i} title={`${d.label}: AED ${d.mrr}`}>
               <div className="bar" style={{ height: `${(d.mrr / maxMrr) * 100}%` }}>
-                {d.mrr > 0 ? <span className="bar-val">${d.mrr}</span> : null}
+                {d.mrr > 0 ? <span className="bar-val">{d.mrr}</span> : null}
               </div>
               <span className="bar-label">{d.label.split(' ')[1]}</span>
             </div>
@@ -60,12 +60,12 @@ export function RevenueView() {
         </div>
         <div className="card section">
           <h3>MRR movement (30d)</h3>
-          <div className="dist"><div className="dist-head"><span>New MRR</span><span className="muted">+${r.movement.newMrr}</span></div>
+          <div className="dist"><div className="dist-head"><span>New MRR</span><span className="muted">+AED {r.movement.newMrr}</span></div>
             <div className="dist-track"><div className="dist-fill" style={{ width: `${pct(r.movement.newMrr, r.movement.newMrr + r.movement.churnedMrr)}%`, background: '#23a455' }} /></div></div>
-          <div className="dist"><div className="dist-head"><span>Churned MRR</span><span className="muted">-${r.movement.churnedMrr}</span></div>
+          <div className="dist"><div className="dist-head"><span>Churned MRR</span><span className="muted">-AED {r.movement.churnedMrr}</span></div>
             <div className="dist-track"><div className="dist-fill" style={{ width: `${pct(r.movement.churnedMrr, r.movement.newMrr + r.movement.churnedMrr)}%`, background: '#e5484d' }} /></div></div>
           <div style={{ marginTop: 12, fontWeight: 800, fontSize: 18 }}>
-            Net: {r.movement.netMrr >= 0 ? '+' : ''}${r.movement.netMrr}/mo
+            Net: {r.movement.netMrr >= 0 ? '+' : ''}AED {r.movement.netMrr}/mo
           </div>
         </div>
       </div>
@@ -88,7 +88,7 @@ function Kpi({ label, value, sub, accent }: { label: string; value: React.ReactN
 function PlanBar({ label, value, max, color }: { label: string; value: number; max: number; color: string }) {
   return (
     <div className="dist">
-      <div className="dist-head"><span>{label}</span><span className="muted">${value}/mo</span></div>
+      <div className="dist-head"><span>{label}</span><span className="muted">AED {value}/mo</span></div>
       <div className="dist-track"><div className="dist-fill" style={{ width: `${(value / max) * 100}%`, background: color }} /></div>
     </div>
   );

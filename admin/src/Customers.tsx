@@ -172,7 +172,7 @@ function CustomerDetail({ id, segments, onClose, onAssign, onChanged }: {
 
             <div className="detail-grid">
               <Field label="Subscription" value={d.subscription.plan === 'free' ? 'Free' : `${d.subscription.plan} (${d.subscription.status})`} />
-              <Field label="Lifetime value (est.)" value={d.ltv ? `$${d.ltv} · ${d.monthsActive} mo` : '—'} />
+              <Field label="Lifetime value (est.)" value={d.ltv ? `AED ${d.ltv} · ${d.monthsActive} mo` : '—'} />
               <Field label="Joined" value={new Date(d.createdAt).toLocaleDateString()} />
               <Field label="Last active" value={d.lastActive ? new Date(d.lastActive).toLocaleString() : 'Never synced'} />
             </div>

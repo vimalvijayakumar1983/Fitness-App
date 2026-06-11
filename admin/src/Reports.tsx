@@ -104,8 +104,8 @@ export function ReportsView() {
       <div className="kpi-grid">
         <Kpi label="Total accounts" value={s.totalUsers} sub={`${arrow} ${Math.abs(s.growthPct)}% vs prev ${s.days}d`} />
         <Kpi label="Paying subscribers" value={s.plans.paying} sub={`${s.plans.premium} premium · ${s.plans.coached} coached`} accent />
-        <Kpi label="MRR (est.)" value={`$${s.revenue.mrr.toLocaleString()}`} sub={`ARR $${s.revenue.arr.toLocaleString()}`} />
-        <Kpi label="ARPU" value={`$${s.revenue.arpu}`} sub="per paying user / mo" />
+        <Kpi label="MRR (est.)" value={`AED ${s.revenue.mrr.toLocaleString()}`} sub={`ARR AED ${s.revenue.arr.toLocaleString()}`} />
+        <Kpi label="ARPU" value={`AED ${s.revenue.arpu}`} sub="per paying user / mo" />
         <Kpi label="Conversion" value={`${s.conversion}%`} sub="paying / accounts" />
         <Kpi label="Churn" value={`${s.churnRate}%`} sub={`${s.churned} canceled`} />
         <Kpi label="Active (7d)" value={s.activeUsers.wau} sub={`${s.retention}% retention`} />

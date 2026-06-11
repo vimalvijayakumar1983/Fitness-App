@@ -72,7 +72,7 @@ adminRouter.get('/customers/:id', (req: Request, res: Response) => {
   const state = db.prepare('SELECT updated_at FROM user_state WHERE user_id = ?').get(req.params.id) as any;
   const planRow = db.prepare('SELECT name, meals, assigned_at FROM customer_plans WHERE user_id = ?').get(req.params.id) as any;
 
-  // LTV estimate: months active × the plan's monthly price (USD).
+  // LTV estimate: months active × the plan's monthly price (AED).
   let ltv = 0;
   let monthsActive = 0;
   const plan = sub?.plan ?? 'free';
@@ -80,7 +80,7 @@ adminRouter.get('/customers/:id', (req: Request, res: Response) => {
     const start = Date.parse(sub.updated_at || u.created_at);
     monthsActive = Math.max(1, Math.round((Date.now() - start) / (30 * 864e5)));
     const pr = getPricing();
-    const monthly = (plan === 'coached' ? pr.coached.month.usd : pr.premium.month.usd) / 100;
+    const monthly = (plan === 'coached' ? pr.coached.month.aed : pr.premium.month.aed) / 100;
     ltv = Math.round(monthsActive * monthly);
   }
 
@@ -232,9 +232,9 @@ adminRouter.get('/stats', (req: Request, res: Response) => {
   };
   const retention = totalUsers ? Math.round((activeUsers.wau / totalUsers) * 1000) / 10 : 0;
 
-  // Revenue estimates (USD) from current pricing.
+  // Revenue estimates (AED) from current pricing.
   const pr = getPricing();
-  const mrr = Math.round(premium * (pr.premium.month.usd / 100) + coached * (pr.coached.month.usd / 100));
+  const mrr = Math.round(premium * (pr.premium.month.aed / 100) + coached * (pr.coached.month.aed / 100));
   const arr = mrr * 12;
   const arpu = paying ? Math.round((mrr / paying) * 100) / 100 : 0;
 
@@ -321,8 +321,8 @@ adminRouter.get('/cohorts', (_req: Request, res: Response) => {
 // ───────────────────────── Revenue report ─────────────────────────
 adminRouter.get('/revenue', (_req: Request, res: Response) => {
   const pr = getPricing();
-  const pPrem = pr.premium.month.usd / 100;
-  const pCoach = pr.coached.month.usd / 100;
+  const pPrem = pr.premium.month.aed / 100;
+  const pCoach = pr.coached.month.aed / 100;
   const price = (plan: string) => (plan === 'coached' ? pCoach : pPrem);
   const WEEK = 7 * 864e5;
 
