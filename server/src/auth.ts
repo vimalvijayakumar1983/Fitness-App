@@ -35,15 +35,14 @@ function signToken(userId: string): string {
 
 export const authRouter = Router();
 
-authRouter.post('/register', (req: Request, res: Response) => {
+authRouter.post('/register', async (req: Request, res: Response) => {
   const parsed = credsSchema.safeParse(req.body);
   if (!parsed.success) {
     return res.status(400).json({ error: 'Invalid email or password (min 6 chars).' });
   }
   const { email, password, name } = parsed.data;
 
-  const existing = db
-    .prepare('SELECT id FROM users WHERE email = ?')
+  const existing = await db.prepare('SELECT id FROM users WHERE email = ?')
     .get(email.toLowerCase());
   if (existing) {
     return res.status(409).json({ error: 'An account with that email already exists.' });
@@ -51,7 +50,7 @@ authRouter.post('/register', (req: Request, res: Response) => {
 
   const id = makeId();
   const passwordHash = bcrypt.hashSync(password, 10);
-  db.prepare(
+  await db.prepare(
     'INSERT INTO users (id, email, password_hash, name, created_at) VALUES (?, ?, ?, ?, ?)',
   ).run(id, email.toLowerCase(), passwordHash, name ?? null, new Date().toISOString());
 
@@ -67,14 +66,14 @@ authRouter.post('/register', (req: Request, res: Response) => {
  * POST /api/auth/forgot — emails a 6-digit reset code. Always responds 200 so
  * the endpoint can't be used to discover which emails have accounts.
  */
-authRouter.post('/forgot', (req: Request, res: Response) => {
+authRouter.post('/forgot', async (req: Request, res: Response) => {
   const email = String(req.body?.email ?? '').toLowerCase().trim();
-  const user = email ? (db.prepare('SELECT id, email FROM users WHERE email = ?').get(email) as UserRow | undefined) : undefined;
+  const user = email ? (await db.prepare('SELECT id, email FROM users WHERE email = ?').get(email) as UserRow | undefined) : undefined;
   if (user) {
     const code = String(Math.floor(100000 + Math.random() * 900000));
     const codeHash = bcrypt.hashSync(code, 10);
     const expires = new Date(Date.now() + 30 * 60_000).toISOString();
-    db.prepare(
+    await db.prepare(
       `INSERT INTO password_resets (user_id, code_hash, expires_at) VALUES (?, ?, ?)
        ON CONFLICT(user_id) DO UPDATE SET code_hash=excluded.code_hash, expires_at=excluded.expires_at`,
     ).run(user.id, codeHash, expires);
@@ -84,33 +83,32 @@ authRouter.post('/forgot', (req: Request, res: Response) => {
 });
 
 /** POST /api/auth/reset — verifies the code and sets a new password. */
-authRouter.post('/reset', (req: Request, res: Response) => {
+authRouter.post('/reset', async (req: Request, res: Response) => {
   const email = String(req.body?.email ?? '').toLowerCase().trim();
   const code = String(req.body?.code ?? '').trim();
   const password = String(req.body?.password ?? '');
   if (password.length < 6) return res.status(400).json({ error: 'Password must be at least 6 characters.' });
-  const user = db.prepare('SELECT id FROM users WHERE email = ?').get(email) as { id: string } | undefined;
+  const user = await db.prepare('SELECT id FROM users WHERE email = ?').get(email) as { id: string } | undefined;
   if (!user) return res.status(400).json({ error: 'Invalid code.' });
-  const row = db.prepare('SELECT code_hash, expires_at FROM password_resets WHERE user_id = ?').get(user.id) as
+  const row = await db.prepare('SELECT code_hash, expires_at FROM password_resets WHERE user_id = ?').get(user.id) as
     | { code_hash: string; expires_at: string }
     | undefined;
   if (!row || row.expires_at < new Date().toISOString() || !bcrypt.compareSync(code, row.code_hash)) {
     return res.status(400).json({ error: 'Invalid or expired code.' });
   }
-  db.prepare('UPDATE users SET password_hash = ? WHERE id = ?').run(bcrypt.hashSync(password, 10), user.id);
-  db.prepare('DELETE FROM password_resets WHERE user_id = ?').run(user.id);
+  await db.prepare('UPDATE users SET password_hash = ? WHERE id = ?').run(bcrypt.hashSync(password, 10), user.id);
+  await db.prepare('DELETE FROM password_resets WHERE user_id = ?').run(user.id);
   return res.json({ token: signToken(user.id) });
 });
 
-authRouter.post('/login', (req: Request, res: Response) => {
+authRouter.post('/login', async (req: Request, res: Response) => {
   const parsed = credsSchema.pick({ email: true, password: true }).safeParse(req.body);
   if (!parsed.success) {
     return res.status(400).json({ error: 'Invalid request.' });
   }
   const { email, password } = parsed.data;
 
-  const user = db
-    .prepare('SELECT * FROM users WHERE email = ?')
+  const user = await db.prepare('SELECT * FROM users WHERE email = ?')
     .get(email.toLowerCase()) as UserRow | undefined;
   if (!user || !bcrypt.compareSync(password, user.password_hash)) {
     return res.status(401).json({ error: 'Incorrect email or password.' });
@@ -123,12 +121,12 @@ authRouter.post('/login', (req: Request, res: Response) => {
 });
 
 /** GET /api/auth/me — current user from token. */
-authRouter.get('/me', (req: AuthedRequest, res: Response) => {
+authRouter.get('/me', async (req: AuthedRequest, res: Response) => {
   const header = req.headers.authorization;
   if (!header?.startsWith('Bearer ')) return res.status(401).json({ error: 'Unauthorized.' });
   try {
     const { sub } = jwt.verify(header.slice(7), JWT_SECRET) as { sub: string };
-    const user = db.prepare('SELECT id, email, name, role FROM users WHERE id = ?').get(sub);
+    const user = await db.prepare('SELECT id, email, name, role FROM users WHERE id = ?').get(sub);
     if (!user) return res.status(401).json({ error: 'Unauthorized.' });
     return res.json({ user });
   } catch {
@@ -140,24 +138,24 @@ authRouter.get('/me', (req: AuthedRequest, res: Response) => {
  * Ensures an admin account exists, from ADMIN_EMAIL / ADMIN_PASSWORD env vars.
  * Promotes the account to the admin role if it already exists.
  */
-export function seedAdmin(): void {
+export async function seedAdmin(): Promise<void> {
   const email = process.env.ADMIN_EMAIL?.toLowerCase();
   const password = process.env.ADMIN_PASSWORD;
   if (!email || !password) return;
-  const existing = db.prepare('SELECT id FROM users WHERE email = ?').get(email) as
+  const existing = await db.prepare('SELECT id FROM users WHERE email = ?').get(email) as
     | { id: string }
     | undefined;
   if (existing) {
-    db.prepare("UPDATE users SET role = 'admin' WHERE id = ?").run(existing.id);
+    await db.prepare("UPDATE users SET role = 'admin' WHERE id = ?").run(existing.id);
     return;
   }
-  db.prepare(
+  await db.prepare(
     "INSERT INTO users (id, email, password_hash, name, role, created_at) VALUES (?, ?, ?, ?, 'admin', ?)",
   ).run(makeId(), email, bcrypt.hashSync(password, 10), 'Admin', new Date().toISOString());
 }
 
 /** Express middleware: requires a valid Bearer token, sets req.userId. */
-export function requireAuth(req: AuthedRequest, res: Response, next: NextFunction) {
+export async function requireAuth(req: AuthedRequest, res: Response, next: NextFunction) {
   const header = req.headers.authorization;
   if (!header || !header.startsWith('Bearer ')) {
     return res.status(401).json({ error: 'Missing authorization token.' });
@@ -166,7 +164,7 @@ export function requireAuth(req: AuthedRequest, res: Response, next: NextFunctio
   try {
     const payload = jwt.verify(token, JWT_SECRET) as { sub: string };
     req.userId = payload.sub;
-    const row = db.prepare('SELECT role FROM users WHERE id = ?').get(payload.sub) as
+    const row = await db.prepare('SELECT role FROM users WHERE id = ?').get(payload.sub) as
       | { role: string }
       | undefined;
     req.userRole = row?.role ?? 'customer';

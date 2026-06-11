@@ -1,7 +1,7 @@
 import 'dotenv/config';
 import express from 'express';
 import cors, { CorsOptions } from 'cors';
-import { initSchema, migrate } from './db';
+import { initSchema, migrate, engine } from './db';
 import { seedFoods } from './foods/seed';
 import { seedContent } from './seed/content';
 import { authRouter, seedAdmin } from './auth';
@@ -49,7 +49,7 @@ const corsOptions: CorsOptions | undefined =
 app.use(cors(corsOptions));
 
 // Health check.
-app.get('/api/health', (_req, res) => {
+app.get('/api/health', async (_req, res) => {
   res.json({ ok: true, coach: process.env.ANTHROPIC_API_KEY ? 'online' : 'offline' });
 });
 
@@ -106,17 +106,25 @@ process.on('uncaughtException', (err) => {
   if (sentry) sentry.captureException(err);
 });
 
-// Initialize the database, run migrations, seed foods and the admin account.
-initSchema();
-migrate();
-seedAdmin();
-const added = seedFoods();
-if (added > 0) console.log(`Seeded ${added} foods.`);
-seedContent();
-seedPhase2();
+// Initialize the database, run migrations, seed foods and the admin account,
+// then start listening. All DB access is async (SQLite or Postgres).
+async function start() {
+  await initSchema();
+  await migrate();
+  await seedAdmin();
+  const added = await seedFoods();
+  if (added > 0) console.log(`Seeded ${added} foods.`);
+  await seedContent();
+  await seedPhase2();
 
-const port = Number(process.env.PORT) || 4000;
-app.listen(port, () => {
-  console.log(`Fitness App API listening on http://localhost:${port}`);
-  console.log(`AI coach: ${process.env.ANTHROPIC_API_KEY ? 'online (Claude)' : 'offline (rule-based)'}`);
+  const port = Number(process.env.PORT) || 4000;
+  app.listen(port, () => {
+    console.log(`Fitness App API listening on http://localhost:${port} [${engine}]`);
+    console.log(`AI coach: ${process.env.ANTHROPIC_API_KEY ? 'online (Claude)' : 'offline (rule-based)'}`);
+  });
+}
+
+start().catch((err) => {
+  console.error('Failed to start server:', err);
+  process.exit(1);
 });

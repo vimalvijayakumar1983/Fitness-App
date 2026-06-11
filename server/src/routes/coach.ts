@@ -23,23 +23,20 @@ You are not a doctor — for medical concerns or symptoms, advise the user to co
 Keep replies short (a few sentences) unless the user asks for detail.`;
 
 /** Builds a one-line snapshot of today's logged data for grounding. */
-function todaysContext(userId: string): string {
+async function todaysContext(userId: string): Promise<string> {
   const date = todayISO();
-  const meals = db
-    .prepare('SELECT items FROM meals WHERE user_id = ? AND date = ?')
+  const meals = await db.prepare('SELECT items FROM meals WHERE user_id = ? AND date = ?')
     .all(userId, date) as { items: string }[];
   let cals = 0;
   for (const m of meals) for (const i of JSON.parse(m.items) as any[]) cals += i.calories || 0;
 
-  const ex = db
-    .prepare(
+  const ex = await db.prepare(
       'SELECT COALESCE(SUM(duration_minutes),0) AS mins, COALESCE(SUM(steps),0) AS steps FROM exercises WHERE user_id = ? AND date = ?',
     )
     .get(userId, date) as { mins: number; steps: number };
-  const sleep = db
-    .prepare('SELECT COALESCE(SUM(duration_minutes),0) AS mins FROM sleep WHERE user_id = ? AND date = ?')
+  const sleep = await db.prepare('SELECT COALESCE(SUM(duration_minutes),0) AS mins FROM sleep WHERE user_id = ? AND date = ?')
     .get(userId, date) as { mins: number };
-  const goals = db.prepare('SELECT * FROM goals WHERE user_id = ?').get(userId) as any;
+  const goals = await db.prepare('SELECT * FROM goals WHERE user_id = ?').get(userId) as any;
 
   return [
     `Today's data (${date}):`,
@@ -65,7 +62,7 @@ coachRouter.post('/chat', async (req: AuthedRequest, res: Response) => {
   const parsed = chatSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: parsed.error.message });
   const { message, history = [], context: clientContext } = parsed.data;
-  const context = [todaysContext(req.userId!), clientContext].filter(Boolean).join('\n\n');
+  const context = [await todaysContext(req.userId!), clientContext].filter(Boolean).join('\n\n');
 
   if (!anthropic) {
     return res.json({ reply: offlineReply(message, context), offline: true });

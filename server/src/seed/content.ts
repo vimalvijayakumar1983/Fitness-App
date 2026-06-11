@@ -5,13 +5,11 @@ import catalog from './catalog.json';
  * Pre-loads the CMS with the FULL app catalog (foods, exercises, recipes) plus
  * starter segments and plan templates, so the backend is the source of truth
  * and the admin can edit everything the app shows. Ids match the app's bundled
- * ids, so the app (which treats the backend as authoritative when present)
- * shows exactly what's in the CMS — every edit/add/delete reflects in the app.
- *
- * Each table is seeded only when empty, so admin edits are never overwritten.
+ * ids. Each table is seeded only when empty, so admin edits are never overwritten.
  */
 const now = () => new Date().toISOString();
-const count = (t: string) => (db.prepare(`SELECT COUNT(*) n FROM ${t}`).get() as any).n as number;
+const count = async (t: string): Promise<number> =>
+  ((await db.prepare(`SELECT COUNT(*) n FROM ${t}`).get()) as any).n as number;
 
 const FOODS = catalog.foods as any[];
 const EX = catalog.exercises as any[];
@@ -57,124 +55,99 @@ const TEMPLATES = [
   },
 ];
 
+const foodParams = (f: any, t: string) => ({
+  id: f.id, name: f.name, brand: f.brand ?? null, serving: f.serving, calories: f.calories,
+  protein: f.protein ?? 0, carbs: f.carbs ?? 0, fat: f.fat ?? 0, category: f.category, image_url: f.imageUrl ?? null, t,
+});
+const exParams = (e: any, t: string) => ({
+  id: e.id, name: e.name, category: e.category, muscle: e.muscle, equipment: e.equipment ?? null, met: e.met, image_url: e.imageUrl ?? null, t,
+});
+const recParams = (r: any, t: string) => ({
+  id: r.id, name: r.name, emoji: r.emoji ?? '🍽️', meal_types: JSON.stringify(r.mealTypes ?? []), diets: JSON.stringify(r.diets ?? []),
+  time_min: r.timeMin ?? 15, calories: r.calories, protein: r.protein ?? 0, carbs: r.carbs ?? 0, fat: r.fat ?? 0,
+  ingredients: JSON.stringify(r.ingredients ?? []), steps: JSON.stringify(r.steps ?? []), image_url: r.imageUrl ?? null, t,
+});
+
 /**
  * Backfill/refresh the full catalog into an EXISTING database (upsert by id).
- * Adds any missing catalog items and updates them to canonical values, without
- * touching admin-created items (which have their own ids). Returns counts.
  */
-export function importCatalog(): { foods: number; exercises: number; recipes: number } {
+export async function importCatalog(): Promise<{ foods: number; exercises: number; recipes: number }> {
   const t = now();
-  const foodIns = db.prepare(
-    `INSERT INTO cms_foods (id,name,brand,serving,calories,protein,carbs,fat,category,image_url,created_at,updated_at)
-     VALUES (@id,@name,@brand,@serving,@calories,@protein,@carbs,@fat,@category,@image_url,@t,@t)
-     ON CONFLICT(id) DO UPDATE SET name=excluded.name, serving=excluded.serving, calories=excluded.calories,
-       protein=excluded.protein, carbs=excluded.carbs, fat=excluded.fat, category=excluded.category, updated_at=excluded.updated_at`,
-  );
-  db.transaction(() => FOODS.forEach((f) => foodIns.run({
-    id: f.id, name: f.name, brand: f.brand ?? null, serving: f.serving, calories: f.calories,
-    protein: f.protein ?? 0, carbs: f.carbs ?? 0, fat: f.fat ?? 0, category: f.category, image_url: f.imageUrl ?? null, t,
-  })))();
-
-  const exIns = db.prepare(
-    `INSERT INTO cms_exercises (id,name,category,muscle,equipment,met,image_url,created_at,updated_at)
-     VALUES (@id,@name,@category,@muscle,@equipment,@met,@image_url,@t,@t)
-     ON CONFLICT(id) DO UPDATE SET name=excluded.name, category=excluded.category, muscle=excluded.muscle,
-       equipment=excluded.equipment, met=excluded.met, updated_at=excluded.updated_at`,
-  );
-  db.transaction(() => EX.forEach((e) => exIns.run({
-    id: e.id, name: e.name, category: e.category, muscle: e.muscle, equipment: e.equipment ?? null, met: e.met, image_url: e.imageUrl ?? null, t,
-  })))();
-
-  const recIns = db.prepare(
-    `INSERT INTO cms_recipes (id,name,emoji,meal_types,diets,time_min,calories,protein,carbs,fat,ingredients,steps,image_url,created_at,updated_at)
-     VALUES (@id,@name,@emoji,@meal_types,@diets,@time_min,@calories,@protein,@carbs,@fat,@ingredients,@steps,@image_url,@t,@t)
-     ON CONFLICT(id) DO UPDATE SET name=excluded.name, emoji=excluded.emoji, meal_types=excluded.meal_types,
-       diets=excluded.diets, time_min=excluded.time_min, calories=excluded.calories, protein=excluded.protein,
-       carbs=excluded.carbs, fat=excluded.fat, ingredients=excluded.ingredients, steps=excluded.steps, updated_at=excluded.updated_at`,
-  );
-  db.transaction(() => RECIPES.forEach((r) => recIns.run({
-    id: r.id, name: r.name, emoji: r.emoji ?? '🍽️', meal_types: JSON.stringify(r.mealTypes ?? []), diets: JSON.stringify(r.diets ?? []),
-    time_min: r.timeMin ?? 15, calories: r.calories, protein: r.protein ?? 0, carbs: r.carbs ?? 0, fat: r.fat ?? 0,
-    ingredients: JSON.stringify(r.ingredients ?? []), steps: JSON.stringify(r.steps ?? []), image_url: r.imageUrl ?? null, t,
-  })))();
-
-  // Seed segments/templates if still empty.
-  if (count('segments') === 0) {
-    const ins = db.prepare('INSERT INTO segments (id,name,color,created_at) VALUES (?,?,?,?)');
-    db.transaction(() => SEGMENTS.forEach(([name, color], i) => ins.run(`seg_${i + 1}`, name, color, t)))();
-  }
-  if (count('plan_templates') === 0) {
-    const ins = db.prepare(
-      `INSERT INTO plan_templates (id,name,description,segment_id,meals,created_at,updated_at) VALUES (?,?,?,NULL,?,?,?)`,
+  await db.tx(async () => {
+    const foodIns = db.prepare(
+      `INSERT INTO cms_foods (id,name,brand,serving,calories,protein,carbs,fat,category,image_url,created_at,updated_at)
+       VALUES (@id,@name,@brand,@serving,@calories,@protein,@carbs,@fat,@category,@image_url,@t,@t)
+       ON CONFLICT(id) DO UPDATE SET name=excluded.name, serving=excluded.serving, calories=excluded.calories,
+         protein=excluded.protein, carbs=excluded.carbs, fat=excluded.fat, category=excluded.category, updated_at=excluded.updated_at`,
     );
-    db.transaction(() => TEMPLATES.forEach((tp) => ins.run(tp.id, tp.name, tp.description, JSON.stringify(tp.meals), t, t)))();
+    for (const f of FOODS) await foodIns.run(foodParams(f, t));
+
+    const exIns = db.prepare(
+      `INSERT INTO cms_exercises (id,name,category,muscle,equipment,met,image_url,created_at,updated_at)
+       VALUES (@id,@name,@category,@muscle,@equipment,@met,@image_url,@t,@t)
+       ON CONFLICT(id) DO UPDATE SET name=excluded.name, category=excluded.category, muscle=excluded.muscle,
+         equipment=excluded.equipment, met=excluded.met, updated_at=excluded.updated_at`,
+    );
+    for (const e of EX) await exIns.run(exParams(e, t));
+
+    const recIns = db.prepare(
+      `INSERT INTO cms_recipes (id,name,emoji,meal_types,diets,time_min,calories,protein,carbs,fat,ingredients,steps,image_url,created_at,updated_at)
+       VALUES (@id,@name,@emoji,@meal_types,@diets,@time_min,@calories,@protein,@carbs,@fat,@ingredients,@steps,@image_url,@t,@t)
+       ON CONFLICT(id) DO UPDATE SET name=excluded.name, emoji=excluded.emoji, meal_types=excluded.meal_types,
+         diets=excluded.diets, time_min=excluded.time_min, calories=excluded.calories, protein=excluded.protein,
+         carbs=excluded.carbs, fat=excluded.fat, ingredients=excluded.ingredients, steps=excluded.steps, updated_at=excluded.updated_at`,
+    );
+    for (const r of RECIPES) await recIns.run(recParams(r, t));
+  });
+
+  if ((await count('segments')) === 0) {
+    const ins = db.prepare('INSERT INTO segments (id,name,color,created_at) VALUES (?,?,?,?)');
+    let i = 0;
+    for (const [name, color] of SEGMENTS) await ins.run(`seg_${++i}`, name, color, t);
+  }
+  if ((await count('plan_templates')) === 0) {
+    const ins = db.prepare(`INSERT INTO plan_templates (id,name,description,segment_id,meals,created_at,updated_at) VALUES (?,?,?,NULL,?,?,?)`);
+    for (const tp of TEMPLATES) await ins.run(tp.id, tp.name, tp.description, JSON.stringify(tp.meals), t, t);
   }
 
   return { foods: FOODS.length, exercises: EX.length, recipes: RECIPES.length };
 }
 
-export function seedContent(): void {
+export async function seedContent(): Promise<void> {
   const t = now();
 
-  if (count('cms_foods') === 0) {
+  if ((await count('cms_foods')) === 0) {
     const ins = db.prepare(
       `INSERT INTO cms_foods (id,name,brand,serving,calories,protein,carbs,fat,category,image_url,created_at,updated_at)
        VALUES (@id,@name,@brand,@serving,@calories,@protein,@carbs,@fat,@category,@image_url,@t,@t)`,
     );
-    db.transaction(() =>
-      FOODS.forEach((f) =>
-        ins.run({
-          id: f.id, name: f.name, brand: f.brand ?? null, serving: f.serving,
-          calories: f.calories, protein: f.protein ?? 0, carbs: f.carbs ?? 0, fat: f.fat ?? 0,
-          category: f.category, image_url: f.imageUrl ?? null, t,
-        }),
-      ),
-    )();
+    await db.tx(async () => { for (const f of FOODS) await ins.run(foodParams(f, t)); });
   }
 
-  if (count('cms_exercises') === 0) {
+  if ((await count('cms_exercises')) === 0) {
     const ins = db.prepare(
       `INSERT INTO cms_exercises (id,name,category,muscle,equipment,met,image_url,created_at,updated_at)
        VALUES (@id,@name,@category,@muscle,@equipment,@met,@image_url,@t,@t)`,
     );
-    db.transaction(() =>
-      EX.forEach((e) =>
-        ins.run({
-          id: e.id, name: e.name, category: e.category, muscle: e.muscle,
-          equipment: e.equipment ?? null, met: e.met, image_url: e.imageUrl ?? null, t,
-        }),
-      ),
-    )();
+    await db.tx(async () => { for (const e of EX) await ins.run(exParams(e, t)); });
   }
 
-  if (count('cms_recipes') === 0) {
+  if ((await count('cms_recipes')) === 0) {
     const ins = db.prepare(
       `INSERT INTO cms_recipes (id,name,emoji,meal_types,diets,time_min,calories,protein,carbs,fat,ingredients,steps,image_url,created_at,updated_at)
        VALUES (@id,@name,@emoji,@meal_types,@diets,@time_min,@calories,@protein,@carbs,@fat,@ingredients,@steps,@image_url,@t,@t)`,
     );
-    db.transaction(() =>
-      RECIPES.forEach((r) =>
-        ins.run({
-          id: r.id, name: r.name, emoji: r.emoji ?? '🍽️',
-          meal_types: JSON.stringify(r.mealTypes ?? []), diets: JSON.stringify(r.diets ?? []),
-          time_min: r.timeMin ?? 15, calories: r.calories, protein: r.protein ?? 0, carbs: r.carbs ?? 0, fat: r.fat ?? 0,
-          ingredients: JSON.stringify(r.ingredients ?? []), steps: JSON.stringify(r.steps ?? []),
-          image_url: r.imageUrl ?? null, t,
-        }),
-      ),
-    )();
+    await db.tx(async () => { for (const r of RECIPES) await ins.run(recParams(r, t)); });
   }
 
-  if (count('segments') === 0) {
+  if ((await count('segments')) === 0) {
     const ins = db.prepare('INSERT INTO segments (id,name,color,created_at) VALUES (?,?,?,?)');
-    db.transaction(() => SEGMENTS.forEach(([name, color], i) => ins.run(`seg_${i + 1}`, name, color, t)))();
+    let i = 0;
+    for (const [name, color] of SEGMENTS) await ins.run(`seg_${++i}`, name, color, t);
   }
 
-  if (count('plan_templates') === 0) {
-    const ins = db.prepare(
-      `INSERT INTO plan_templates (id,name,description,segment_id,meals,created_at,updated_at)
-       VALUES (?,?,?,NULL,?,?,?)`,
-    );
-    db.transaction(() => TEMPLATES.forEach((tp) => ins.run(tp.id, tp.name, tp.description, JSON.stringify(tp.meals), t, t)))();
+  if ((await count('plan_templates')) === 0) {
+    const ins = db.prepare(`INSERT INTO plan_templates (id,name,description,segment_id,meals,created_at,updated_at) VALUES (?,?,?,NULL,?,?,?)`);
+    for (const tp of TEMPLATES) await ins.run(tp.id, tp.name, tp.description, JSON.stringify(tp.meals), t, t);
   }
 }

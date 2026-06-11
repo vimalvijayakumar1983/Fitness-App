@@ -47,9 +47,8 @@ const assignSchema = z.object({
 });
 
 // ───────────────────────── Customers (CRM) ─────────────────────────
-adminRouter.get('/customers', (_req, res) => {
-  const rows = db
-    .prepare(
+adminRouter.get('/customers', async (_req, res) => {
+  const rows = await db.prepare(
       `SELECT u.id, u.email, u.name, u.role, u.segment_id, u.created_at,
               COALESCE(sub.plan, 'free') AS plan,
               (SELECT 1 FROM customer_plans cp WHERE cp.user_id = u.id) AS has_plan
@@ -65,12 +64,12 @@ adminRouter.get('/customers', (_req, res) => {
   );
 });
 
-adminRouter.get('/customers/:id', (req: Request, res: Response) => {
-  const u = db.prepare('SELECT id, email, name, role, segment_id, created_at FROM users WHERE id = ?').get(req.params.id) as any;
+adminRouter.get('/customers/:id', async (req: Request, res: Response) => {
+  const u = await db.prepare('SELECT id, email, name, role, segment_id, created_at FROM users WHERE id = ?').get(req.params.id) as any;
   if (!u) return res.status(404).json({ error: 'Customer not found.' });
-  const sub = db.prepare('SELECT plan, status, current_period_end, updated_at FROM subscriptions WHERE user_id = ?').get(req.params.id) as any;
-  const state = db.prepare('SELECT updated_at FROM user_state WHERE user_id = ?').get(req.params.id) as any;
-  const planRow = db.prepare('SELECT name, meals, assigned_at FROM customer_plans WHERE user_id = ?').get(req.params.id) as any;
+  const sub = await db.prepare('SELECT plan, status, current_period_end, updated_at FROM subscriptions WHERE user_id = ?').get(req.params.id) as any;
+  const state = await db.prepare('SELECT updated_at FROM user_state WHERE user_id = ?').get(req.params.id) as any;
+  const planRow = await db.prepare('SELECT name, meals, assigned_at FROM customer_plans WHERE user_id = ?').get(req.params.id) as any;
 
   // LTV estimate: months active × the plan's monthly price (AED).
   let ltv = 0;
@@ -79,7 +78,7 @@ adminRouter.get('/customers/:id', (req: Request, res: Response) => {
   if (plan === 'premium' || plan === 'coached') {
     const start = Date.parse(sub.updated_at || u.created_at);
     monthsActive = Math.max(1, Math.round((Date.now() - start) / (30 * 864e5)));
-    const pr = getPricing();
+    const pr = await getPricing();
     const monthly = (plan === 'coached' ? pr.coached.month.aed : pr.premium.month.aed) / 100;
     ltv = Math.round(monthsActive * monthly);
   }
@@ -94,25 +93,25 @@ adminRouter.get('/customers/:id', (req: Request, res: Response) => {
   });
 });
 
-adminRouter.patch('/customers/:id', (req: Request, res: Response) => {
+adminRouter.patch('/customers/:id', async (req: Request, res: Response) => {
   const segmentId = req.body?.segmentId ?? null;
-  const r = db.prepare('UPDATE users SET segment_id = ? WHERE id = ?').run(segmentId, req.params.id);
+  const r = await db.prepare('UPDATE users SET segment_id = ? WHERE id = ?').run(segmentId, req.params.id);
   if (!r.changes) return res.status(404).json({ error: 'Customer not found.' });
   res.json({ ok: true });
 });
 
-adminRouter.get('/customers/:id/plan', (req: Request, res: Response) => {
-  const row = db.prepare('SELECT * FROM customer_plans WHERE user_id = ?').get(req.params.id) as any;
+adminRouter.get('/customers/:id/plan', async (req: Request, res: Response) => {
+  const row = await db.prepare('SELECT * FROM customer_plans WHERE user_id = ?').get(req.params.id) as any;
   if (!row) return res.json({ plan: null });
   res.json({ plan: { name: row.name, meals: JSON.parse(row.meals), templateId: row.template_id, assignedAt: row.assigned_at } });
 });
 
-adminRouter.post('/customers/:id/plan', (req: Request, res: Response) => {
+adminRouter.post('/customers/:id/plan', async (req: Request, res: Response) => {
   const p = assignSchema.safeParse(req.body);
   if (!p.success) return bad(res, p.error);
-  const exists = db.prepare('SELECT id FROM users WHERE id = ?').get(req.params.id);
+  const exists = await db.prepare('SELECT id FROM users WHERE id = ?').get(req.params.id);
   if (!exists) return res.status(404).json({ error: 'Customer not found.' });
-  db.prepare(
+  await db.prepare(
     `INSERT INTO customer_plans (user_id, name, meals, template_id, assigned_at)
      VALUES (@uid, @name, @meals, @template_id, @t)
      ON CONFLICT(user_id) DO UPDATE SET name=excluded.name, meals=excluded.meals,
@@ -121,8 +120,8 @@ adminRouter.post('/customers/:id/plan', (req: Request, res: Response) => {
   res.status(201).json({ ok: true });
 });
 
-adminRouter.delete('/customers/:id/plan', (req: Request, res: Response) => {
-  db.prepare('DELETE FROM customer_plans WHERE user_id = ?').run(req.params.id);
+adminRouter.delete('/customers/:id/plan', async (req: Request, res: Response) => {
+  await db.prepare('DELETE FROM customer_plans WHERE user_id = ?').run(req.params.id);
   res.json({ ok: true });
 });
 
@@ -133,49 +132,49 @@ const mapTemplate = (r: any) => ({
   createdAt: r.created_at, updatedAt: r.updated_at,
 });
 
-adminRouter.get('/plan-templates', (_req, res) =>
-  res.json(db.prepare('SELECT * FROM plan_templates ORDER BY updated_at DESC').all().map(mapTemplate)));
+adminRouter.get('/plan-templates', async (_req, res) =>
+  res.json((await db.prepare('SELECT * FROM plan_templates ORDER BY updated_at DESC').all()).map(mapTemplate)));
 
-adminRouter.post('/plan-templates', (req: Request, res: Response) => {
+adminRouter.post('/plan-templates', async (req: Request, res: Response) => {
   const p = templateSchema.safeParse(req.body);
   if (!p.success) return bad(res, p.error);
   const id = `tpl_${makeId()}`;
-  db.prepare(
+  await db.prepare(
     `INSERT INTO plan_templates (id, name, description, segment_id, meals, created_at, updated_at)
      VALUES (@id, @name, @description, @segment_id, @meals, @t, @t)`,
   ).run({ id, name: p.data.name, description: p.data.description ?? null, segment_id: p.data.segmentId ?? null, meals: JSON.stringify(p.data.meals), t: now() });
-  res.status(201).json(mapTemplate(db.prepare('SELECT * FROM plan_templates WHERE id = ?').get(id)));
+  res.status(201).json(mapTemplate(await db.prepare('SELECT * FROM plan_templates WHERE id = ?').get(id)));
 });
 
-adminRouter.put('/plan-templates/:id', (req: Request, res: Response) => {
+adminRouter.put('/plan-templates/:id', async (req: Request, res: Response) => {
   const p = templateSchema.safeParse(req.body);
   if (!p.success) return bad(res, p.error);
-  const r = db.prepare(
+  const r = await db.prepare(
     `UPDATE plan_templates SET name=@name, description=@description, segment_id=@segment_id,
        meals=@meals, updated_at=@t WHERE id=@id`,
   ).run({ id: req.params.id, name: p.data.name, description: p.data.description ?? null, segment_id: p.data.segmentId ?? null, meals: JSON.stringify(p.data.meals), t: now() });
   if (!r.changes) return res.status(404).json({ error: 'Template not found.' });
-  res.json(mapTemplate(db.prepare('SELECT * FROM plan_templates WHERE id = ?').get(req.params.id)));
+  res.json(mapTemplate(await db.prepare('SELECT * FROM plan_templates WHERE id = ?').get(req.params.id)));
 });
 
-adminRouter.delete('/plan-templates/:id', (req: Request, res: Response) => {
-  db.prepare('DELETE FROM plan_templates WHERE id = ?').run(req.params.id);
+adminRouter.delete('/plan-templates/:id', async (req: Request, res: Response) => {
+  await db.prepare('DELETE FROM plan_templates WHERE id = ?').run(req.params.id);
   res.json({ ok: true });
 });
 
 // ─────────────────── Content backfill (one-time import) ───────────────────
-adminRouter.post('/seed-catalog', (_req, res) => {
+adminRouter.post('/seed-catalog', async (_req, res) => {
   const counts = importCatalog();
   res.json({ ok: true, imported: counts });
 });
 
 // ───────────────────────── Pricing (settings) ─────────────────────────
-adminRouter.get('/pricing', (_req, res) => res.json(getPricing()));
-adminRouter.put('/pricing', (req: Request, res: Response) => {
+adminRouter.get('/pricing', async (_req, res) => res.json(await getPricing()));
+adminRouter.put('/pricing', async (req: Request, res: Response) => {
   const p = req.body as Pricing;
   if (!p?.premium || !p?.coached) return res.status(400).json({ error: 'Invalid pricing.' });
-  setPricing(p);
-  res.json(getPricing());
+  await setPricing(p);
+  res.json(await getPricing());
 });
 
 // ───────────────────── Push announcements (broadcast) ─────────────────────
@@ -186,17 +185,17 @@ adminRouter.post('/announce', async (req: Request, res: Response) => {
   if (!title || !body) return res.status(400).json({ error: 'Title and body are required.' });
 
   const users = (segmentId
-    ? db.prepare('SELECT id FROM users WHERE segment_id = ?').all(segmentId)
-    : db.prepare("SELECT id FROM users WHERE role = 'customer'").all()) as { id: string }[];
-  const tokens = tokensForUsers(users.map((u) => u.id));
+    ? await db.prepare('SELECT id FROM users WHERE segment_id = ?').all(segmentId)
+    : await db.prepare("SELECT id FROM users WHERE role = 'customer'").all()) as { id: string }[];
+  const tokens = await tokensForUsers(users.map((u) => u.id));
   const result = await sendPush(tokens, { title, body, data: { type: 'announcement' } });
   res.json({ ok: true, recipients: users.length, devices: tokens.length, ...result });
 });
 
 // ───────────────────────── Reports / analytics ─────────────────────────
-adminRouter.get('/stats', (req: Request, res: Response) => {
+adminRouter.get('/stats', async (req: Request, res: Response) => {
   const days = Math.min(180, Math.max(7, Number(req.query.days) || 30));
-  const one = (sql: string, ...args: any[]) => (db.prepare(sql).get(...args) as any)?.n ?? 0;
+  const one = async (sql: string, ...args: any[]) => ((await db.prepare(sql).get(...args)) as any)?.n ?? 0;
   const dayAgo = (d: number) => new Date(Date.now() - d * 864e5).toISOString();
   const series = (rows: { d: string; n: number }[], n: number) => {
     const byDay = new Map(rows.map((r) => [r.d, r.n]));
@@ -208,37 +207,37 @@ adminRouter.get('/stats', (req: Request, res: Response) => {
     return out;
   };
 
-  const totalUsers = one('SELECT COUNT(*) n FROM users');
-  const totalCustomers = one("SELECT COUNT(*) n FROM users WHERE role = 'customer'");
-  const newToday = one('SELECT COUNT(*) n FROM users WHERE created_at >= ?', dayAgo(1));
-  const newInRange = one('SELECT COUNT(*) n FROM users WHERE created_at >= ?', dayAgo(days));
-  const prevRange = one('SELECT COUNT(*) n FROM users WHERE created_at >= ? AND created_at < ?', dayAgo(days * 2), dayAgo(days));
+  const totalUsers = await one('SELECT COUNT(*) n FROM users');
+  const totalCustomers = await one("SELECT COUNT(*) n FROM users WHERE role = 'customer'");
+  const newToday = await one('SELECT COUNT(*) n FROM users WHERE created_at >= ?', dayAgo(1));
+  const newInRange = await one('SELECT COUNT(*) n FROM users WHERE created_at >= ?', dayAgo(days));
+  const prevRange = await one('SELECT COUNT(*) n FROM users WHERE created_at >= ? AND created_at < ?', dayAgo(days * 2), dayAgo(days));
   const growthPct = prevRange ? Math.round(((newInRange - prevRange) / prevRange) * 100) : newInRange ? 100 : 0;
 
   const active = "status IN ('active','trialing','canceling')";
-  const premium = one(`SELECT COUNT(*) n FROM subscriptions WHERE plan='premium' AND ${active}`);
-  const coached = one(`SELECT COUNT(*) n FROM subscriptions WHERE plan='coached' AND ${active}`);
+  const premium = await one(`SELECT COUNT(*) n FROM subscriptions WHERE plan='premium' AND ${active}`);
+  const coached = await one(`SELECT COUNT(*) n FROM subscriptions WHERE plan='coached' AND ${active}`);
   const paying = premium + coached;
   const free = Math.max(0, totalUsers - paying);
-  const churned = one("SELECT COUNT(*) n FROM subscriptions WHERE status='canceled'");
+  const churned = await one("SELECT COUNT(*) n FROM subscriptions WHERE status='canceled'");
   const conversion = totalUsers ? Math.round((paying / totalUsers) * 1000) / 10 : 0;
   const churnRate = paying + churned ? Math.round((churned / (paying + churned)) * 1000) / 10 : 0;
 
   // Active users from last cloud-sync time.
   const activeUsers = {
-    dau: one('SELECT COUNT(*) n FROM user_state WHERE updated_at >= ?', dayAgo(1)),
-    wau: one('SELECT COUNT(*) n FROM user_state WHERE updated_at >= ?', dayAgo(7)),
-    mau: one('SELECT COUNT(*) n FROM user_state WHERE updated_at >= ?', dayAgo(30)),
+    dau: await one('SELECT COUNT(*) n FROM user_state WHERE updated_at >= ?', dayAgo(1)),
+    wau: await one('SELECT COUNT(*) n FROM user_state WHERE updated_at >= ?', dayAgo(7)),
+    mau: await one('SELECT COUNT(*) n FROM user_state WHERE updated_at >= ?', dayAgo(30)),
   };
   const retention = totalUsers ? Math.round((activeUsers.wau / totalUsers) * 1000) / 10 : 0;
 
   // Revenue estimates (AED) from current pricing.
-  const pr = getPricing();
+  const pr = await getPricing();
   const mrr = Math.round(premium * (pr.premium.month.aed / 100) + coached * (pr.coached.month.aed / 100));
   const arr = mrr * 12;
   const arpu = paying ? Math.round((mrr / paying) * 100) / 100 : 0;
 
-  const signupRows = db.prepare(
+  const signupRows = await db.prepare(
     `SELECT substr(created_at,1,10) d, COUNT(*) n FROM users WHERE created_at >= ? GROUP BY d`,
   ).all(dayAgo(days)) as { d: string; n: number }[];
   const signups = series(signupRows, days);
@@ -246,31 +245,31 @@ adminRouter.get('/stats', (req: Request, res: Response) => {
   let run = baseline;
   const cumulative = signups.map((s) => ({ date: s.date, count: (run += s.count) }));
 
-  const subRows = db.prepare(
+  const subRows = await db.prepare(
     `SELECT substr(updated_at,1,10) d, COUNT(*) n FROM subscriptions
      WHERE plan != 'free' AND ${active} AND updated_at >= ? GROUP BY d`,
   ).all(dayAgo(days)) as { d: string; n: number }[];
   const newSubs = series(subRows, days);
 
-  const segments = db.prepare(
+  const segments = await db.prepare(
     `SELECT s.name, COUNT(u.id) n FROM segments s LEFT JOIN users u ON u.segment_id = s.id GROUP BY s.id ORDER BY n DESC`,
   ).all() as { name: string; n: number }[];
 
   const content = {
-    foods: one('SELECT COUNT(*) n FROM cms_foods'),
-    recipes: one('SELECT COUNT(*) n FROM cms_recipes'),
-    exercises: one('SELECT COUNT(*) n FROM cms_exercises'),
-    templates: one('SELECT COUNT(*) n FROM plan_templates'),
-    segments: one('SELECT COUNT(*) n FROM segments'),
+    foods: await one('SELECT COUNT(*) n FROM cms_foods'),
+    recipes: await one('SELECT COUNT(*) n FROM cms_recipes'),
+    exercises: await one('SELECT COUNT(*) n FROM cms_exercises'),
+    templates: await one('SELECT COUNT(*) n FROM plan_templates'),
+    segments: await one('SELECT COUNT(*) n FROM segments'),
   };
 
-  const recent = db.prepare(
+  const recent = await db.prepare(
     `SELECT u.email, u.name, u.created_at, COALESCE(sub.plan,'free') plan
      FROM users u LEFT JOIN subscriptions sub ON sub.user_id = u.id
      ORDER BY u.created_at DESC LIMIT 8`,
   ).all() as any[];
 
-  const recentSubs = db.prepare(
+  const recentSubs = await db.prepare(
     `SELECT u.email, s.plan, s.updated_at FROM subscriptions s JOIN users u ON u.id = s.user_id
      WHERE s.plan != 'free' ORDER BY s.updated_at DESC LIMIT 6`,
   ).all() as any[];
@@ -290,10 +289,10 @@ adminRouter.get('/stats', (req: Request, res: Response) => {
 });
 
 // ───────────────────── Cohort retention ─────────────────────
-adminRouter.get('/cohorts', (_req: Request, res: Response) => {
+adminRouter.get('/cohorts', async (_req: Request, res: Response) => {
   const N = 8; // weekly cohorts
   const WEEK = 7 * 864e5;
-  const rows = db.prepare(
+  const rows = await db.prepare(
     `SELECT u.created_at c, st.updated_at a FROM users u LEFT JOIN user_state st ON st.user_id = u.id`,
   ).all() as { c: string; a: string | null }[];
 
@@ -319,14 +318,14 @@ adminRouter.get('/cohorts', (_req: Request, res: Response) => {
 });
 
 // ───────────────────────── Revenue report ─────────────────────────
-adminRouter.get('/revenue', (_req: Request, res: Response) => {
-  const pr = getPricing();
+adminRouter.get('/revenue', async (_req: Request, res: Response) => {
+  const pr = await getPricing();
   const pPrem = pr.premium.month.aed / 100;
   const pCoach = pr.coached.month.aed / 100;
   const price = (plan: string) => (plan === 'coached' ? pCoach : pPrem);
   const WEEK = 7 * 864e5;
 
-  const subs = db.prepare('SELECT plan, status, updated_at FROM subscriptions').all() as
+  const subs = await db.prepare('SELECT plan, status, updated_at FROM subscriptions').all() as
     { plan: string; status: string; updated_at: string }[];
   const isActive = (s: { plan: string; status: string }) =>
     (s.plan === 'premium' || s.plan === 'coached') && (s.status === 'active' || s.status === 'trialing' || s.status === 'canceling');
@@ -365,8 +364,8 @@ adminRouter.get('/revenue', (_req: Request, res: Response) => {
 });
 
 // ───────────────────── Customer-facing: my plan ─────────────────────
-mePlanRouter.get('/plan', (req: AuthedRequest, res: Response) => {
-  const row = db.prepare('SELECT * FROM customer_plans WHERE user_id = ?').get(req.userId) as any;
+mePlanRouter.get('/plan', async (req: AuthedRequest, res: Response) => {
+  const row = await db.prepare('SELECT * FROM customer_plans WHERE user_id = ?').get(req.userId) as any;
   if (!row) return res.json({ plan: null });
   res.json({ plan: { name: row.name, meals: JSON.parse(row.meals), assignedAt: row.assigned_at } });
 });
@@ -374,19 +373,19 @@ mePlanRouter.get('/plan', (req: AuthedRequest, res: Response) => {
 // ───────────────── Privacy: data export & account deletion ─────────────────
 
 /** GET /api/me/export — full export of the signed-in user's data (GDPR). */
-mePlanRouter.get('/export', (req: AuthedRequest, res: Response) => {
+mePlanRouter.get('/export', async (req: AuthedRequest, res: Response) => {
   const uid = req.userId;
-  const get = (sql: string) => db.prepare(sql).get(uid) as any;
-  const all = (sql: string) => db.prepare(sql).all(uid) as any[];
+  const get = async (sql: string) => (await db.prepare(sql).get(uid)) as any;
+  const all = async (sql: string) => (await db.prepare(sql).all(uid)) as any[];
 
-  const user = get('SELECT id, email, name, role, created_at FROM users WHERE id = ?');
-  const state = get('SELECT data, updated_at FROM user_state WHERE user_id = ?');
-  const subscription = get('SELECT plan, status, provider, current_period_end, updated_at FROM subscriptions WHERE user_id = ?');
-  const enrollments = all('SELECT program_id, current_week, status, completed_tasks, started_at FROM program_enrollments WHERE user_id = ?');
-  const bookings = all('SELECT id, coach_id, status, note, created_at FROM coach_bookings WHERE user_id = ?');
+  const user = await get('SELECT id, email, name, role, created_at FROM users WHERE id = ?');
+  const state = await get('SELECT data, updated_at FROM user_state WHERE user_id = ?');
+  const subscription = await get('SELECT plan, status, provider, current_period_end, updated_at FROM subscriptions WHERE user_id = ?');
+  const enrollments = await all('SELECT program_id, current_week, status, completed_tasks, started_at FROM program_enrollments WHERE user_id = ?');
+  const bookings = await all('SELECT id, coach_id, status, note, created_at FROM coach_bookings WHERE user_id = ?');
   const bookingIds = bookings.map((b) => b.id);
   const messages = bookingIds.length
-    ? (db.prepare(`SELECT booking_id, sender, body, created_at FROM coach_messages WHERE booking_id IN (${bookingIds.map(() => '?').join(',')})`).all(...bookingIds) as any[])
+    ? (await db.prepare(`SELECT booking_id, sender, body, created_at FROM coach_messages WHERE booking_id IN (${bookingIds.map(() => '?').join(',')})`).all(...bookingIds) as any[])
     : [];
 
   res.setHeader('Content-Disposition', 'attachment; filename="alzaabi-health-export.json"');
@@ -402,11 +401,11 @@ mePlanRouter.get('/export', (req: AuthedRequest, res: Response) => {
 });
 
 /** POST /api/me/push-token — register this device's Expo push token. */
-mePlanRouter.post('/push-token', (req: AuthedRequest, res: Response) => {
+mePlanRouter.post('/push-token', async (req: AuthedRequest, res: Response) => {
   const token = String(req.body?.token ?? '').trim();
   const platform = String(req.body?.platform ?? '').slice(0, 20);
   if (!token) return res.status(400).json({ error: 'Missing token.' });
-  db.prepare(
+  await db.prepare(
     `INSERT INTO push_tokens (token, user_id, platform, updated_at) VALUES (?, ?, ?, ?)
      ON CONFLICT(token) DO UPDATE SET user_id=excluded.user_id, platform=excluded.platform, updated_at=excluded.updated_at`,
   ).run(token, req.userId, platform || null, now());
@@ -414,10 +413,10 @@ mePlanRouter.post('/push-token', (req: AuthedRequest, res: Response) => {
 });
 
 /** DELETE /api/me/account — permanently deletes the account and all data. */
-mePlanRouter.delete('/account', (req: AuthedRequest, res: Response) => {
+mePlanRouter.delete('/account', async (req: AuthedRequest, res: Response) => {
   // Foreign keys cascade: meals, exercises, state, subscriptions, enrollments,
   // bookings (→ messages), customer_plans, etc. all removed with the user.
-  const r = db.prepare('DELETE FROM users WHERE id = ?').run(req.userId);
+  const r = await db.prepare('DELETE FROM users WHERE id = ?').run(req.userId);
   if (!r.changes) return res.status(404).json({ error: 'Account not found.' });
   res.json({ ok: true });
 });

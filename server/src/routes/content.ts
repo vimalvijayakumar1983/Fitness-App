@@ -58,76 +58,76 @@ const segmentSchema = z.object({ name: z.string().min(1), color: z.string().opti
 const bad = (res: Response, e: z.ZodError) => res.status(400).json({ error: e.errors[0]?.message ?? 'Invalid input.' });
 
 // ───────────────────────── Public reads ─────────────────────────
-contentRouter.get('/foods', (_req, res) =>
-  res.json(db.prepare('SELECT * FROM cms_foods ORDER BY updated_at DESC').all().map(mapFood)));
-contentRouter.get('/exercises', (_req, res) =>
-  res.json(db.prepare('SELECT * FROM cms_exercises ORDER BY updated_at DESC').all().map(mapExercise)));
-contentRouter.get('/recipes', (_req, res) =>
-  res.json(db.prepare('SELECT * FROM cms_recipes ORDER BY updated_at DESC').all().map(mapRecipe)));
-contentRouter.get('/segments', (_req, res) =>
-  res.json(db.prepare('SELECT * FROM segments ORDER BY name').all()));
-contentRouter.get('/pricing', (_req, res) => res.json(getPricing()));
+contentRouter.get('/foods', async (_req, res) =>
+  res.json((await db.prepare('SELECT * FROM cms_foods ORDER BY updated_at DESC').all()).map(mapFood)));
+contentRouter.get('/exercises', async (_req, res) =>
+  res.json((await db.prepare('SELECT * FROM cms_exercises ORDER BY updated_at DESC').all()).map(mapExercise)));
+contentRouter.get('/recipes', async (_req, res) =>
+  res.json((await db.prepare('SELECT * FROM cms_recipes ORDER BY updated_at DESC').all()).map(mapRecipe)));
+contentRouter.get('/segments', async (_req, res) =>
+  res.json(await db.prepare('SELECT * FROM segments ORDER BY name').all()));
+contentRouter.get('/pricing', async (_req, res) => res.json(await getPricing()));
 
 /** One call for the app to hydrate all admin content. */
-contentRouter.get('/all', (_req, res) =>
+contentRouter.get('/all', async (_req, res) =>
   res.json({
-    foods: db.prepare('SELECT * FROM cms_foods').all().map(mapFood),
-    exercises: db.prepare('SELECT * FROM cms_exercises').all().map(mapExercise),
-    recipes: db.prepare('SELECT * FROM cms_recipes').all().map(mapRecipe),
+    foods: (await db.prepare('SELECT * FROM cms_foods').all()).map(mapFood),
+    exercises: (await db.prepare('SELECT * FROM cms_exercises').all()).map(mapExercise),
+    recipes: (await db.prepare('SELECT * FROM cms_recipes').all()).map(mapRecipe),
   }));
 
 // ───────────────────────── Admin writes ─────────────────────────
 contentRouter.use(requireAdmin);
 
 // Foods
-contentRouter.post('/foods', (req: Request, res: Response) => {
+contentRouter.post('/foods', async (req: Request, res: Response) => {
   const p = foodSchema.safeParse(req.body);
   if (!p.success) return bad(res, p.error);
   const id = `cms_${makeId()}`;
   const d = p.data;
-  db.prepare(`INSERT INTO cms_foods (id,name,brand,serving,calories,protein,carbs,fat,category,image_url,created_at,updated_at)
+  await db.prepare(`INSERT INTO cms_foods (id,name,brand,serving,calories,protein,carbs,fat,category,image_url,created_at,updated_at)
     VALUES (@id,@name,@brand,@serving,@calories,@protein,@carbs,@fat,@category,@image_url,@t,@t)`)
     .run({ id, ...d, brand: d.brand ?? null, image_url: d.imageUrl ?? null, t: now() });
-  res.status(201).json(mapFood(db.prepare('SELECT * FROM cms_foods WHERE id = ?').get(id)));
+  res.status(201).json(mapFood(await db.prepare('SELECT * FROM cms_foods WHERE id = ?').get(id)));
 });
-contentRouter.put('/foods/:id', (req: Request, res: Response) => {
+contentRouter.put('/foods/:id', async (req: Request, res: Response) => {
   const p = foodSchema.safeParse(req.body);
   if (!p.success) return bad(res, p.error);
   const d = p.data;
-  const r = db.prepare(`UPDATE cms_foods SET name=@name,brand=@brand,serving=@serving,calories=@calories,
+  const r = await db.prepare(`UPDATE cms_foods SET name=@name,brand=@brand,serving=@serving,calories=@calories,
     protein=@protein,carbs=@carbs,fat=@fat,category=@category,image_url=@image_url,updated_at=@t WHERE id=@id`)
     .run({ id: req.params.id, ...d, brand: d.brand ?? null, image_url: d.imageUrl ?? null, t: now() });
   if (!r.changes) return res.status(404).json({ error: 'Not found.' });
-  res.json(mapFood(db.prepare('SELECT * FROM cms_foods WHERE id = ?').get(req.params.id)));
+  res.json(mapFood(await db.prepare('SELECT * FROM cms_foods WHERE id = ?').get(req.params.id)));
 });
-contentRouter.delete('/foods/:id', (req: Request, res: Response) => {
-  db.prepare('DELETE FROM cms_foods WHERE id = ?').run(req.params.id);
+contentRouter.delete('/foods/:id', async (req: Request, res: Response) => {
+  await db.prepare('DELETE FROM cms_foods WHERE id = ?').run(req.params.id);
   res.json({ ok: true });
 });
 
 // Exercises
-contentRouter.post('/exercises', (req: Request, res: Response) => {
+contentRouter.post('/exercises', async (req: Request, res: Response) => {
   const p = exerciseSchema.safeParse(req.body);
   if (!p.success) return bad(res, p.error);
   const id = `cms_${makeId()}`;
   const d = p.data;
-  db.prepare(`INSERT INTO cms_exercises (id,name,category,muscle,equipment,met,image_url,created_at,updated_at)
+  await db.prepare(`INSERT INTO cms_exercises (id,name,category,muscle,equipment,met,image_url,created_at,updated_at)
     VALUES (@id,@name,@category,@muscle,@equipment,@met,@image_url,@t,@t)`)
     .run({ id, ...d, equipment: d.equipment ?? null, image_url: d.imageUrl ?? null, t: now() });
-  res.status(201).json(mapExercise(db.prepare('SELECT * FROM cms_exercises WHERE id = ?').get(id)));
+  res.status(201).json(mapExercise(await db.prepare('SELECT * FROM cms_exercises WHERE id = ?').get(id)));
 });
-contentRouter.put('/exercises/:id', (req: Request, res: Response) => {
+contentRouter.put('/exercises/:id', async (req: Request, res: Response) => {
   const p = exerciseSchema.safeParse(req.body);
   if (!p.success) return bad(res, p.error);
   const d = p.data;
-  const r = db.prepare(`UPDATE cms_exercises SET name=@name,category=@category,muscle=@muscle,
+  const r = await db.prepare(`UPDATE cms_exercises SET name=@name,category=@category,muscle=@muscle,
     equipment=@equipment,met=@met,image_url=@image_url,updated_at=@t WHERE id=@id`)
     .run({ id: req.params.id, ...d, equipment: d.equipment ?? null, image_url: d.imageUrl ?? null, t: now() });
   if (!r.changes) return res.status(404).json({ error: 'Not found.' });
-  res.json(mapExercise(db.prepare('SELECT * FROM cms_exercises WHERE id = ?').get(req.params.id)));
+  res.json(mapExercise(await db.prepare('SELECT * FROM cms_exercises WHERE id = ?').get(req.params.id)));
 });
-contentRouter.delete('/exercises/:id', (req: Request, res: Response) => {
-  db.prepare('DELETE FROM cms_exercises WHERE id = ?').run(req.params.id);
+contentRouter.delete('/exercises/:id', async (req: Request, res: Response) => {
+  await db.prepare('DELETE FROM cms_exercises WHERE id = ?').run(req.params.id);
   res.json({ ok: true });
 });
 
@@ -139,40 +139,40 @@ const recipeRow = (id: string, d: z.infer<typeof recipeSchema>) => ({
   ingredients: JSON.stringify(d.ingredients), steps: JSON.stringify(d.steps),
   image_url: d.imageUrl ?? null, t: now(),
 });
-contentRouter.post('/recipes', (req: Request, res: Response) => {
+contentRouter.post('/recipes', async (req: Request, res: Response) => {
   const p = recipeSchema.safeParse(req.body);
   if (!p.success) return bad(res, p.error);
   const id = `cms_${makeId()}`;
-  db.prepare(`INSERT INTO cms_recipes (id,name,emoji,meal_types,diets,time_min,calories,protein,carbs,fat,ingredients,steps,image_url,created_at,updated_at)
+  await db.prepare(`INSERT INTO cms_recipes (id,name,emoji,meal_types,diets,time_min,calories,protein,carbs,fat,ingredients,steps,image_url,created_at,updated_at)
     VALUES (@id,@name,@emoji,@meal_types,@diets,@time_min,@calories,@protein,@carbs,@fat,@ingredients,@steps,@image_url,@t,@t)`)
     .run(recipeRow(id, p.data));
-  res.status(201).json(mapRecipe(db.prepare('SELECT * FROM cms_recipes WHERE id = ?').get(id)));
+  res.status(201).json(mapRecipe(await db.prepare('SELECT * FROM cms_recipes WHERE id = ?').get(id)));
 });
-contentRouter.put('/recipes/:id', (req: Request, res: Response) => {
+contentRouter.put('/recipes/:id', async (req: Request, res: Response) => {
   const p = recipeSchema.safeParse(req.body);
   if (!p.success) return bad(res, p.error);
-  const r = db.prepare(`UPDATE cms_recipes SET name=@name,emoji=@emoji,meal_types=@meal_types,diets=@diets,
+  const r = await db.prepare(`UPDATE cms_recipes SET name=@name,emoji=@emoji,meal_types=@meal_types,diets=@diets,
     time_min=@time_min,calories=@calories,protein=@protein,carbs=@carbs,fat=@fat,ingredients=@ingredients,
     steps=@steps,image_url=@image_url,updated_at=@t WHERE id=@id`)
     .run(recipeRow(req.params.id, p.data));
   if (!r.changes) return res.status(404).json({ error: 'Not found.' });
-  res.json(mapRecipe(db.prepare('SELECT * FROM cms_recipes WHERE id = ?').get(req.params.id)));
+  res.json(mapRecipe(await db.prepare('SELECT * FROM cms_recipes WHERE id = ?').get(req.params.id)));
 });
-contentRouter.delete('/recipes/:id', (req: Request, res: Response) => {
-  db.prepare('DELETE FROM cms_recipes WHERE id = ?').run(req.params.id);
+contentRouter.delete('/recipes/:id', async (req: Request, res: Response) => {
+  await db.prepare('DELETE FROM cms_recipes WHERE id = ?').run(req.params.id);
   res.json({ ok: true });
 });
 
 // Segments
-contentRouter.post('/segments', (req: Request, res: Response) => {
+contentRouter.post('/segments', async (req: Request, res: Response) => {
   const p = segmentSchema.safeParse(req.body);
   if (!p.success) return bad(res, p.error);
   const id = `seg_${makeId()}`;
-  db.prepare('INSERT INTO segments (id,name,color,created_at) VALUES (?,?,?,?)')
+  await db.prepare('INSERT INTO segments (id,name,color,created_at) VALUES (?,?,?,?)')
     .run(id, p.data.name, p.data.color ?? null, now());
-  res.status(201).json(db.prepare('SELECT * FROM segments WHERE id = ?').get(id));
+  res.status(201).json(await db.prepare('SELECT * FROM segments WHERE id = ?').get(id));
 });
-contentRouter.delete('/segments/:id', (req: Request, res: Response) => {
-  db.prepare('DELETE FROM segments WHERE id = ?').run(req.params.id);
+contentRouter.delete('/segments/:id', async (req: Request, res: Response) => {
+  await db.prepare('DELETE FROM segments WHERE id = ?').run(req.params.id);
   res.json({ ok: true });
 });

@@ -36,10 +36,9 @@ export async function sendPush(tokens: string[], msg: PushMessage): Promise<{ se
 }
 
 /** Push tokens for a set of user ids. */
-export function tokensForUsers(userIds: string[]): string[] {
+export async function tokensForUsers(userIds: string[]): Promise<string[]> {
   if (!userIds.length) return [];
-  const rows = db
-    .prepare(`SELECT token FROM push_tokens WHERE user_id IN (${userIds.map(() => '?').join(',')})`)
-    .all(...userIds) as { token: string }[];
+  const rows = (await db.prepare(`SELECT token FROM push_tokens WHERE user_id IN (${userIds.map(() => '?').join(',')})`)
+    .all(...userIds)) as { token: string }[];
   return rows.map((r) => r.token);
 }

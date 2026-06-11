@@ -10,19 +10,18 @@ import { AuthedRequest, requireAuth } from '../auth';
 export const syncRouter = Router();
 syncRouter.use(requireAuth);
 
-syncRouter.get('/', (req: AuthedRequest, res: Response) => {
-  const row = db
-    .prepare('SELECT data, updated_at FROM user_state WHERE user_id = ?')
+syncRouter.get('/', async (req: AuthedRequest, res: Response) => {
+  const row = await db.prepare('SELECT data, updated_at FROM user_state WHERE user_id = ?')
     .get(req.userId) as { data: string; updated_at: string } | undefined;
   if (!row) return res.json({ data: null, updatedAt: null });
   res.json({ data: JSON.parse(row.data), updatedAt: row.updated_at });
 });
 
-syncRouter.put('/', (req: AuthedRequest, res: Response) => {
+syncRouter.put('/', async (req: AuthedRequest, res: Response) => {
   const data = req.body?.data;
   if (data == null) return res.status(400).json({ error: 'Missing data.' });
   const updatedAt = new Date().toISOString();
-  db.prepare(
+  await db.prepare(
     `INSERT INTO user_state (user_id, data, updated_at) VALUES (?, ?, ?)
      ON CONFLICT(user_id) DO UPDATE SET data = excluded.data, updated_at = excluded.updated_at`,
   ).run(req.userId, JSON.stringify(data), updatedAt);

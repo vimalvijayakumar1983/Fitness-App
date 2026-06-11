@@ -17,34 +17,34 @@ const now = () => new Date().toISOString();
 export const integrationsRouter = Router();
 
 /** Issue (or reuse) a connection token for the signed-in user. */
-integrationsRouter.post('/connect', requireAuth, (req: AuthedRequest, res: Response) => {
+integrationsRouter.post('/connect', requireAuth, async (req: AuthedRequest, res: Response) => {
   const provider = String(req.body?.provider ?? 'generic').slice(0, 40);
-  let row = db.prepare('SELECT token FROM integration_links WHERE user_id = ? AND provider = ?').get(req.userId, provider) as any;
+  let row = await db.prepare('SELECT token FROM integration_links WHERE user_id = ? AND provider = ?').get(req.userId, provider) as any;
   if (!row) {
     const token = `lnk_${makeId()}${makeId()}`;
-    db.prepare('INSERT INTO integration_links (token, user_id, provider, created_at) VALUES (?, ?, ?, ?)')
+    await db.prepare('INSERT INTO integration_links (token, user_id, provider, created_at) VALUES (?, ?, ?, ?)')
       .run(token, req.userId, provider, now());
     row = { token };
   }
   res.json({ token: row.token, provider, webhookPath: '/api/integrations/webhook' });
 });
 
-integrationsRouter.get('/status', requireAuth, (req: AuthedRequest, res: Response) => {
-  const rows = db.prepare('SELECT provider, created_at, last_sync_at FROM integration_links WHERE user_id = ?').all(req.userId) as any[];
+integrationsRouter.get('/status', requireAuth, async (req: AuthedRequest, res: Response) => {
+  const rows = await db.prepare('SELECT provider, created_at, last_sync_at FROM integration_links WHERE user_id = ?').all(req.userId) as any[];
   res.json({ connected: rows.map((r) => ({ provider: r.provider, connectedAt: r.created_at, lastSyncAt: r.last_sync_at })) });
 });
 
-integrationsRouter.delete('/disconnect', requireAuth, (req: AuthedRequest, res: Response) => {
+integrationsRouter.delete('/disconnect', requireAuth, async (req: AuthedRequest, res: Response) => {
   const provider = String(req.body?.provider ?? '');
-  db.prepare('DELETE FROM integration_links WHERE user_id = ? AND provider = ?').run(req.userId, provider);
+  await db.prepare('DELETE FROM integration_links WHERE user_id = ? AND provider = ?').run(req.userId, provider);
   res.json({ ok: true });
 });
 
 type Bucket = 'exercises' | 'sleep' | 'glucose' | 'weights';
 
 /** Merge arrays into the user's app-data blob, de-duping by id. */
-function mergeIntoBlob(userId: string, incoming: Partial<Record<Bucket, any[]>>): number {
-  const stateRow = db.prepare('SELECT data FROM user_state WHERE user_id = ?').get(userId) as { data: string } | undefined;
+async function mergeIntoBlob(userId: string, incoming: Partial<Record<Bucket, any[]>>): Promise<number> {
+  const stateRow = await db.prepare('SELECT data FROM user_state WHERE user_id = ?').get(userId) as { data: string } | undefined;
   const data: any = stateRow?.data ? JSON.parse(stateRow.data) : {};
   let added = 0;
   for (const bucket of ['exercises', 'sleep', 'glucose', 'weights'] as Bucket[]) {
@@ -61,7 +61,7 @@ function mergeIntoBlob(userId: string, incoming: Partial<Record<Bucket, any[]>>)
     }
     data[bucket] = existing;
   }
-  db.prepare(
+  await db.prepare(
     `INSERT INTO user_state (user_id, data, updated_at) VALUES (?, ?, ?)
      ON CONFLICT(user_id) DO UPDATE SET data = excluded.data, updated_at = excluded.updated_at`,
   ).run(userId, JSON.stringify(data), now());
@@ -73,21 +73,21 @@ function mergeIntoBlob(userId: string, incoming: Partial<Record<Bucket, any[]>>)
  * optional shared secret in INTEGRATIONS_WEBHOOK_SECRET). Body:
  * { token, provider?, exercises?, sleep?, glucose?, weights? }.
  */
-integrationsRouter.post('/webhook', (req: Request, res: Response) => {
+integrationsRouter.post('/webhook', async (req: Request, res: Response) => {
   const secret = process.env.INTEGRATIONS_WEBHOOK_SECRET;
   if (secret && req.headers['x-webhook-secret'] !== secret) {
     return res.status(401).json({ error: 'Bad webhook secret.' });
   }
   const token = String(req.body?.token ?? '');
-  const link = db.prepare('SELECT user_id FROM integration_links WHERE token = ?').get(token) as { user_id: string } | undefined;
+  const link = await db.prepare('SELECT user_id FROM integration_links WHERE token = ?').get(token) as { user_id: string } | undefined;
   if (!link) return res.status(404).json({ error: 'Unknown connection token.' });
 
-  const added = mergeIntoBlob(link.user_id, {
+  const added = await mergeIntoBlob(link.user_id, {
     exercises: req.body?.exercises,
     sleep: req.body?.sleep,
     glucose: req.body?.glucose,
     weights: req.body?.weights,
   });
-  db.prepare('UPDATE integration_links SET last_sync_at = ? WHERE token = ?').run(now(), token);
+  await db.prepare('UPDATE integration_links SET last_sync_at = ? WHERE token = ?').run(now(), token);
   res.json({ ok: true, ingested: added });
 });

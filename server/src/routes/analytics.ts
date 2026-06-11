@@ -7,12 +7,11 @@ export const analyticsRouter = Router();
 analyticsRouter.use(requireAuth);
 
 /** GET /api/analytics/daily?date=YYYY-MM-DD — one-day headline summary. */
-analyticsRouter.get('/daily', (req: AuthedRequest, res: Response) => {
+analyticsRouter.get('/daily', async (req: AuthedRequest, res: Response) => {
   const date = (req.query.date as string | undefined) ?? todayISO();
   const uid = req.userId;
 
-  const meals = db
-    .prepare('SELECT items FROM meals WHERE user_id = ? AND date = ?')
+  const meals = await db.prepare('SELECT items FROM meals WHERE user_id = ? AND date = ?')
     .all(uid, date) as { items: string }[];
   let caloriesIn = 0;
   let proteinIn = 0;
@@ -23,8 +22,7 @@ analyticsRouter.get('/daily', (req: AuthedRequest, res: Response) => {
     }
   }
 
-  const ex = db
-    .prepare(
+  const ex = await db.prepare(
       `SELECT COALESCE(SUM(calories_burned),0) AS cals,
               COALESCE(SUM(duration_minutes),0) AS mins,
               COALESCE(SUM(steps),0) AS steps
@@ -32,18 +30,15 @@ analyticsRouter.get('/daily', (req: AuthedRequest, res: Response) => {
     )
     .get(uid, date) as { cals: number; mins: number; steps: number };
 
-  const sleep = db
-    .prepare(
+  const sleep = await db.prepare(
       'SELECT COALESCE(SUM(duration_minutes),0) AS mins FROM sleep WHERE user_id = ? AND date = ?',
     )
     .get(uid, date) as { mins: number };
 
-  const mood = db
-    .prepare('SELECT AVG(mood) AS avg FROM moods WHERE user_id = ? AND date = ?')
+  const mood = await db.prepare('SELECT AVG(mood) AS avg FROM moods WHERE user_id = ? AND date = ?')
     .get(uid, date) as { avg: number | null };
 
-  const water = db
-    .prepare('SELECT COALESCE(SUM(amount_ml),0) AS ml FROM water WHERE user_id = ? AND date = ?')
+  const water = await db.prepare('SELECT COALESCE(SUM(amount_ml),0) AS ml FROM water WHERE user_id = ? AND date = ?')
     .get(uid, date) as { ml: number };
 
   res.json({
@@ -60,7 +55,7 @@ analyticsRouter.get('/daily', (req: AuthedRequest, res: Response) => {
 });
 
 /** GET /api/analytics/trend?metric=steps&days=30 — daily series for charts. */
-analyticsRouter.get('/trend', (req: AuthedRequest, res: Response) => {
+analyticsRouter.get('/trend', async (req: AuthedRequest, res: Response) => {
   const metric = (req.query.metric as string) ?? 'steps';
   const days = Math.min(Math.max(Number(req.query.days) || 30, 1), 365);
   const uid = req.userId;
@@ -78,7 +73,7 @@ analyticsRouter.get('/trend', (req: AuthedRequest, res: Response) => {
   const sql = queries[metric];
   if (!sql) return res.status(400).json({ error: 'Unknown metric.' });
 
-  const rows = db.prepare(`${sql} ORDER BY date DESC LIMIT ?`).all(uid, days) as {
+  const rows = await db.prepare(`${sql} ORDER BY date DESC LIMIT ?`).all(uid, days) as {
     date: string;
     value: number;
   }[];

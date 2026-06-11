@@ -7,7 +7,7 @@ import { db } from '../db';
  * out of the box.
  */
 const now = () => new Date().toISOString();
-const count = (t: string) => (db.prepare(`SELECT COUNT(*) n FROM ${t}`).get() as any).n as number;
+const count = async (t: string): Promise<number> => ((await db.prepare(`SELECT COUNT(*) n FROM ${t}`).get()) as any).n as number;
 
 type Module = { week: number; title: string; focus: string; tasks: string[] };
 
@@ -176,45 +176,41 @@ const COACHES: SeedCoach[] = [
   },
 ];
 
-export function seedPhase2(): void {
+export async function seedPhase2(): Promise<void> {
   const t = now();
 
-  if (count('programs') === 0) {
+  if ((await count('programs')) === 0) {
     const ins = db.prepare(
       `INSERT INTO programs (id,slug,name,condition,tagline,description,duration_weeks,image_url,color,outcomes,modules,active,created_at,updated_at)
        VALUES (@id,@slug,@name,@condition,@tagline,@description,@duration_weeks,NULL,@color,@outcomes,@modules,1,@t,@t)`,
     );
-    db.transaction(() =>
-      PROGRAMS.forEach((p) =>
-        ins.run({
-          id: p.id,
-          slug: p.id.replace(/^prog_/, '').replace(/_/g, '-'),
-          name: p.name, condition: p.condition, tagline: p.tagline, description: p.description,
-          duration_weeks: p.durationWeeks, color: p.color,
-          outcomes: JSON.stringify(p.outcomes), modules: JSON.stringify(p.modules), t,
-        }),
-      ),
-    )();
+    await db.tx(async () => {
+      for (const p of PROGRAMS) await ins.run({
+        id: p.id,
+        slug: p.id.replace(/^prog_/, '').replace(/_/g, '-'),
+        name: p.name, condition: p.condition, tagline: p.tagline, description: p.description,
+        duration_weeks: p.durationWeeks, color: p.color,
+        outcomes: JSON.stringify(p.outcomes), modules: JSON.stringify(p.modules), t,
+      });
+    });
   }
 
-  if (count('coaches') === 0) {
+  if ((await count('coaches')) === 0) {
     const ins = db.prepare(
       `INSERT INTO coaches (id,name,title,specialties,bio,photo_url,rating,reviews,price_month_usd,languages,active,created_at,updated_at)
        VALUES (@id,@name,@title,@specialties,@bio,NULL,@rating,@reviews,@price,@languages,1,@t,@t)`,
     );
-    db.transaction(() =>
-      COACHES.forEach((c) =>
-        ins.run({
-          id: c.id, name: c.name, title: c.title,
-          specialties: JSON.stringify(c.specialties), bio: c.bio,
-          rating: c.rating, reviews: c.reviews, price: c.priceMonthUsd,
-          languages: JSON.stringify(c.languages), t,
-        }),
-      ),
-    )();
+    await db.tx(async () => {
+      for (const c of COACHES) await ins.run({
+        id: c.id, name: c.name, title: c.title,
+        specialties: JSON.stringify(c.specialties), bio: c.bio,
+        rating: c.rating, reviews: c.reviews, price: c.priceMonthUsd,
+        languages: JSON.stringify(c.languages), t,
+      });
+    });
   }
 
-  if (count('challenges') === 0) {
+  if ((await count('challenges')) === 0) {
     const inDays = (d: number) => new Date(Date.now() + d * 864e5).toISOString();
     const ins = db.prepare(
       `INSERT INTO challenges (id,title,description,emoji,metric,goal,unit,start_at,end_at,active,created_at,updated_at)
@@ -225,12 +221,12 @@ export function seedPhase2(): void {
       ['chal_move', 'Move 150 Minutes', 'Hit the WHO target of 150 active minutes this week.', '🔥', 'active_minutes', 150, 'min'],
       ['chal_glucose', 'Glucose Streak', 'Log 14 glucose readings this fortnight.', '🩸', 'glucose_logs', 14, 'logs'],
     ];
-    db.transaction(() => rows.forEach(([id, title, desc, emoji, metric, goal, unit]) =>
-      ins.run(id, title, desc, emoji, metric, goal, unit, inDays(0), inDays(metric === 'glucose_logs' ? 14 : 7), t, t)))();
+    for (const [id, title, desc, emoji, metric, goal, unit] of rows)
+      await ins.run(id, title, desc, emoji, metric, goal, unit, inDays(0), inDays(metric === 'glucose_logs' ? 14 : 7), t, t);
   }
 
-  if (count('companies') === 0) {
-    db.prepare(
+  if ((await count('companies')) === 0) {
+    await db.prepare(
       `INSERT INTO companies (id,name,join_code,seats,contact_email,plan,created_at,updated_at)
        VALUES (?,?,?,?,?,?,?,?)`,
     ).run('co_demo', 'Al Zaabi Group (Demo)', 'WELLAZ', 250, 'wellness@alzaabi.example', 'premium', t, t);

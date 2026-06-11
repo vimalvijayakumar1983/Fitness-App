@@ -46,3 +46,25 @@ Service → **Variables** → add:
 ## Scaling note
 SQLite + a Volume is perfect to launch. When you outgrow it, add Railway
 **Postgres** and we swap the data layer behind the same API — no app changes.
+
+## Database: SQLite (default) → Postgres (production)
+
+The server runs on **SQLite** locally and switches to **Postgres** automatically
+when `DATABASE_URL` is set (e.g. Railway/Neon/Supabase):
+
+```
+DATABASE_URL=postgres://user:pass@host:5432/dbname
+# optional: DATABASE_SSL=false   (for local/non-SSL Postgres)
+```
+
+Schema and migrations run automatically on boot for both engines.
+
+**Migrate existing SQLite data into Postgres:**
+```
+DATABASE_URL=postgres://… SQLITE_PATH=./data/fitness.db npm run migrate:pg
+```
+
+**Verify the Postgres adapter** (runs against an in-process Postgres, no server needed):
+```
+npm run verify:pg
+```

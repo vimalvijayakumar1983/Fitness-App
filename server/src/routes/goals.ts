@@ -15,16 +15,16 @@ const goalsSchema = z.object({
   targetWeightKg: z.number().positive().optional(),
 });
 
-goalsRouter.get('/', (req: AuthedRequest, res: Response) => {
-  const row = db.prepare('SELECT * FROM goals WHERE user_id = ?').get(req.userId);
+goalsRouter.get('/', async (req: AuthedRequest, res: Response) => {
+  const row = await db.prepare('SELECT * FROM goals WHERE user_id = ?').get(req.userId);
   res.json(row ?? null);
 });
 
-goalsRouter.put('/', (req: AuthedRequest, res: Response) => {
+goalsRouter.put('/', async (req: AuthedRequest, res: Response) => {
   const parsed = goalsSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: parsed.error.message });
   const g = parsed.data;
-  db.prepare(
+  await db.prepare(
     `INSERT INTO goals
        (user_id, daily_calories, daily_protein, daily_steps, daily_water_ml, sleep_hours, target_weight_kg, updated_at)
      VALUES (@user_id, @daily_calories, @daily_protein, @daily_steps, @daily_water_ml, @sleep_hours, @target_weight_kg, @updated_at)

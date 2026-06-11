@@ -11,16 +11,20 @@
     "start": "node dist/index.js",
     "dev": "ts-node-dev --respawn --transpile-only src/index.ts",
     "seed": "ts-node src/foods/seed.ts",
-    "lint": "tsc --noEmit"
+    "lint": "tsc --noEmit",
+    "verify:pg": "ts-node scripts/verify-postgres.ts",
+    "migrate:pg": "ts-node scripts/migrate-to-postgres.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.102.0",
+    "@electric-sql/pglite": "^0.2.17",
     "bcryptjs": "^2.4.3",
     "better-sqlite3": "^11.3.0",
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",
     "express": "^4.21.0",
     "jsonwebtoken": "^9.0.2",
+    "pg": "^8.21.0",
     "stripe": "^17.7.0",
     "zod": "^3.23.8"
   },
