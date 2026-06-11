@@ -178,20 +178,22 @@ const FOOD_SCHEMA = {
   properties: {
     items: {
       type: 'array',
+      description: 'One entry per distinct food/component visible in the photo.',
       items: {
         type: 'object',
         properties: {
-          name: { type: 'string' },
-          calories: { type: 'number' },
-          protein: { type: 'number' },
-          carbs: { type: 'number' },
-          fat: { type: 'number' },
+          name: { type: 'string', description: 'The specific food, e.g. "Grilled chicken breast".' },
+          portion: { type: 'string', description: 'Estimated portion, e.g. "120 g", "1 cup", "2 slices".' },
+          calories: { type: 'number', description: 'kcal for the estimated portion.' },
+          protein: { type: 'number', description: 'grams of protein.' },
+          carbs: { type: 'number', description: 'grams of carbohydrate.' },
+          fat: { type: 'number', description: 'grams of fat.' },
         },
-        required: ['name', 'calories'],
+        required: ['name', 'portion', 'calories', 'protein', 'carbs', 'fat'],
         additionalProperties: false,
       },
     },
-    note: { type: 'string' },
+    note: { type: 'string', description: 'One short sentence (e.g. assumptions or a healthier tip).' },
   },
   required: ['items'],
   additionalProperties: false,
@@ -211,17 +213,21 @@ coachRouter.post('/analyze-food', async (req: AuthedRequest, res: Response) => {
   try {
     const response = await anthropic.messages.create({
       model: MODEL,
-      max_tokens: 1024,
+      max_tokens: 1500,
       system:
-        'You are a nutrition vision assistant. Identify the foods in the image and estimate ' +
-        'calories and macros (grams) for the visible portion. Be realistic; if unsure, give your best estimate.',
+        'You are an expert nutrition vision assistant. Carefully identify EVERY distinct food and ' +
+        'component in the photo (e.g. list the chicken, the rice, and the salad separately, not just ' +
+        '"chicken meal"). For each, estimate the portion size from visual cues (plate size, utensils) ' +
+        'and give realistic calories plus protein, carbohydrate and fat in grams for that portion. ' +
+        'Always provide all macros — give your best estimate even when uncertain. Use common ' +
+        'nutrition databases as your reference.',
       output_config: { format: { type: 'json_schema', schema: FOOD_SCHEMA } },
       messages: [
         {
           role: 'user',
           content: [
             { type: 'image', source: { type: 'base64', media_type: mediaType, data: imageBase64 } },
-            { type: 'text', text: 'What foods are in this photo? Estimate calories and macros.' },
+            { type: 'text', text: 'Identify each food in this photo. For every item return its name, estimated portion, calories, protein, carbs and fat.' },
           ],
         },
       ],

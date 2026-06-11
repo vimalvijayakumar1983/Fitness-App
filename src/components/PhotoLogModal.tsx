@@ -64,9 +64,12 @@ export function PhotoLogModal({ visible, mealType, onAdd, onClose }: Props) {
     setErr(''); setBusy(true);
     try {
       const r = await api.analyzeFoodPhoto(img.base64, img.mediaType as any);
-      const mapped: FoodItem[] = (r.items || []).map((i: any) => ({
-        name: i.name, calories: Math.round(i.calories || 0),
-        protein: i.protein, carbs: i.carbs, fat: i.fat,
+      const mapped: FoodItem[] = (r.items || []).map((i) => ({
+        name: i.portion ? `${i.name} · ${i.portion}` : i.name,
+        calories: Math.round(i.calories || 0),
+        protein: i.protein != null ? Math.round(i.protein) : undefined,
+        carbs: i.carbs != null ? Math.round(i.carbs) : undefined,
+        fat: i.fat != null ? Math.round(i.fat) : undefined,
       }));
       setItems((prev) => [...prev, ...mapped]);
       if (r.note) setNote(r.note);
@@ -103,6 +106,9 @@ export function PhotoLogModal({ visible, mealType, onAdd, onClose }: Props) {
   const remove = (idx: number) => setItems((prev) => prev.filter((_, i) => i !== idx));
 
   const totalCal = items.reduce((a, b) => a + b.calories, 0);
+  const totalP = Math.round(items.reduce((a, b) => a + (b.protein ?? 0), 0));
+  const totalC = Math.round(items.reduce((a, b) => a + (b.carbs ?? 0), 0));
+  const totalF = Math.round(items.reduce((a, b) => a + (b.fat ?? 0), 0));
   const addAll = () => { if (items.length) { onAdd(items); close(); } };
 
   return (
@@ -143,18 +149,25 @@ export function PhotoLogModal({ visible, mealType, onAdd, onClose }: Props) {
 
                 {items.length > 0 ? (
                   <View style={styles.results}>
-                    <Text style={styles.resultsHead}>Detected · {totalCal} kcal total</Text>
+                    <Text style={styles.resultsHead}>Detected foods</Text>
                     {items.map((it, i) => (
                       <View key={i} style={styles.itemRow}>
                         <View style={{ flex: 1 }}>
                           <Text style={styles.itemName}>{it.name}</Text>
-                          {it.protein != null ? <Text style={styles.itemMacros}>P{Math.round(it.protein)} · C{Math.round(it.carbs ?? 0)} · F{Math.round(it.fat ?? 0)}</Text> : null}
+                          <Text style={styles.itemMacros}>
+                            P {Math.round(it.protein ?? 0)}g · C {Math.round(it.carbs ?? 0)}g · F {Math.round(it.fat ?? 0)}g
+                          </Text>
                         </View>
                         <TextInput style={styles.calInput} keyboardType="number-pad" value={String(it.calories)} onChangeText={(v) => setCal(i, v)} />
                         <Text style={styles.kcal}>kcal</Text>
                         <Pressable onPress={() => remove(i)} hitSlop={8}><Text style={styles.remove}>✕</Text></Pressable>
                       </View>
                     ))}
+                    {/* Totals */}
+                    <View style={styles.totalsRow}>
+                      <Text style={styles.totalsLabel}>Total</Text>
+                      <Text style={styles.totalsVal}>{totalCal} kcal · P {totalP}g · C {totalC}g · F {totalF}g</Text>
+                    </View>
                     <PrimaryButton label={`Add ${items.length} item${items.length > 1 ? 's' : ''} to ${mealType}`} onPress={addAll} gradient={gradients.primary} style={{ marginTop: spacing.md }} />
                   </View>
                 ) : null}
@@ -187,7 +200,10 @@ const styles = StyleSheet.create({
   resultsHead: { ...type.label, marginBottom: spacing.sm },
   itemRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: colors.border },
   itemName: { ...type.body, fontWeight: '600' },
-  itemMacros: { ...type.caption, marginTop: 1 },
+  itemMacros: { ...type.caption, marginTop: 1, color: colors.textSecondary },
+  totalsRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: spacing.md, marginTop: 4, borderTopWidth: 1, borderTopColor: colors.border },
+  totalsLabel: { ...type.body, fontWeight: '800' },
+  totalsVal: { ...type.caption, fontWeight: '700', color: colors.text },
   calInput: { width: 64, backgroundColor: colors.backgroundAlt, borderRadius: radius.sm, paddingHorizontal: spacing.sm, paddingVertical: 8, textAlign: 'right', color: colors.text, ...type.body },
   kcal: { ...type.caption },
   remove: { color: colors.danger, fontSize: 16, fontWeight: '700', marginLeft: 4 },

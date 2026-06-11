@@ -142,6 +142,16 @@ export interface FoodResult {
   fat: number | null;
 }
 
+/** A food identified by AI from a photo (includes an estimated portion). */
+export interface AnalyzedFood {
+  name: string;
+  portion?: string;
+  calories: number;
+  protein?: number;
+  carbs?: number;
+  fat?: number;
+}
+
 export const api = {
   // Auth
   async register(email: string, password: string, name?: string): Promise<AuthResult> {
@@ -282,7 +292,7 @@ export const api = {
       body: { message, history, context },
     }),
   analyzeFoodPhoto: (imageBase64: string, mediaType = 'image/jpeg') =>
-    request<{ items: FoodResult[]; note?: string }>('/coach/analyze-food', {
+    request<{ items: AnalyzedFood[]; note?: string }>('/coach/analyze-food', {
       method: 'POST',
       body: { imageBase64, mediaType },
     }),
