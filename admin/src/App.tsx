@@ -6,6 +6,7 @@ import { ReportsView } from './Reports';
 import { RevenueView } from './Revenue';
 import { PricingView } from './Pricing';
 import { NotifyView } from './Notify';
+import { ChallengesView } from './Challenges';
 import { ProgramsView } from './Programs';
 import { CoachesView } from './Coaches';
 import { CompaniesView } from './Companies';
@@ -302,6 +303,7 @@ export function App() {
           <button className={tab === 'programs' ? 'active' : ''} onClick={() => setTab('programs')}>Programs</button>
           <button className={tab === 'coaches' ? 'active' : ''} onClick={() => setTab('coaches')}>Coaches</button>
           <button className={tab === 'companies' ? 'active' : ''} onClick={() => setTab('companies')}>Corporate</button>
+          <button className={tab === 'challenges' ? 'active' : ''} onClick={() => setTab('challenges')}>Challenges</button>
           <div className="nav-sep">Content</div>
           {RESOURCES.map((r) => (
             <button key={r.key} className={tab === r.key ? 'active' : ''} onClick={() => setTab(r.key)}>{r.label}</button>
@@ -322,6 +324,7 @@ export function App() {
           : tab === 'programs' ? <ProgramsView />
           : tab === 'coaches' ? <CoachesView />
           : tab === 'companies' ? <CompaniesView />
+          : tab === 'challenges' ? <ChallengesView />
           : resource ? <ResourceView resource={resource} />
           : null}
       </main>

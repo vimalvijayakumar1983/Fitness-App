@@ -7,6 +7,7 @@ import { SectionHeader } from '@/components/SectionHeader';
 import { PrimaryButton } from '@/components/PrimaryButton';
 import { ProgramDetailModal } from '@/components/ProgramDetailModal';
 import { CoachingModal } from '@/components/CoachingModal';
+import { ChallengesSection } from '@/components/ChallengesSection';
 import { useAuth } from '@/context/AuthContext';
 import { useI18n } from '@/i18n';
 import { api } from '@/services/api';
@@ -184,6 +185,9 @@ export function CareScreen() {
           style={{ marginTop: spacing.md }}
         />
       </Card>
+
+      {/* Challenges */}
+      <ChallengesSection />
 
       {/* Corporate wellness */}
       <SectionHeader title={t('care.workplace')} />

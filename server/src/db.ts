@@ -288,6 +288,31 @@ export function initSchema(): void {
     );
     CREATE INDEX IF NOT EXISTS idx_msg_booking ON coach_messages(booking_id);
 
+    -- Community challenges (admin-managed, public read) + participation.
+    CREATE TABLE IF NOT EXISTS challenges (
+      id TEXT PRIMARY KEY,
+      title TEXT NOT NULL,
+      description TEXT,
+      emoji TEXT,
+      metric TEXT NOT NULL,          -- steps | active_minutes | workouts | glucose_logs | days_logged
+      goal REAL NOT NULL,
+      unit TEXT,
+      start_at TEXT NOT NULL,
+      end_at TEXT NOT NULL,
+      active INTEGER NOT NULL DEFAULT 1,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    );
+    CREATE TABLE IF NOT EXISTS challenge_participants (
+      challenge_id TEXT NOT NULL REFERENCES challenges(id) ON DELETE CASCADE,
+      user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      progress REAL NOT NULL DEFAULT 0,
+      joined_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL,
+      PRIMARY KEY (challenge_id, user_id)
+    );
+    CREATE INDEX IF NOT EXISTS idx_cp_user ON challenge_participants(user_id);
+
     -- Expo push tokens per device, for remote notifications.
     CREATE TABLE IF NOT EXISTS push_tokens (
       token TEXT PRIMARY KEY,

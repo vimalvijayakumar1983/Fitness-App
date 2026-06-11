@@ -16,6 +16,7 @@ import { adminRouter, mePlanRouter } from './routes/plans';
 import { billingRouter, billingWebhook } from './routes/billing';
 import { labsRouter } from './routes/labs';
 import { programsRouter, coachesRouter, companyRouter, adminPhase2Router } from './routes/phase2';
+import { challengesRouter, adminChallengesRouter } from './routes/challenges';
 import { seedPhase2 } from './seed/phase2';
 
 const app = express();
@@ -58,6 +59,8 @@ app.use('/api/content', contentRouter);
 app.use('/api/sync', syncRouter);
 app.use('/api/admin', adminRouter);
 app.use('/api/admin', adminPhase2Router); // Phase 2 back-office (programs, coaches, companies)
+app.use('/api/admin', adminChallengesRouter); // Challenges back-office
+app.use('/api/challenges', challengesRouter);
 app.use('/api/me', mePlanRouter);
 app.use('/api/billing', billingRouter);
 app.use('/api/labs', labsRouter);

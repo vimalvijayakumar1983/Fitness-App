@@ -392,6 +392,34 @@ export interface AppData {
   reminders?: ReminderPrefs;
 }
 
+export type ChallengeMetric = 'steps' | 'active_minutes' | 'workouts' | 'glucose_logs' | 'days_logged';
+
+/** A time-boxed community challenge. */
+export interface Challenge {
+  id: string;
+  title: string;
+  description: string;
+  emoji: string;
+  metric: ChallengeMetric;
+  goal: number;
+  unit: string;
+  startAt: ISODateTimeString;
+  endAt: ISODateTimeString;
+  active: boolean;
+  participants?: number;
+  /** Present when the user has joined. */
+  progress?: number;
+  joined?: boolean;
+}
+
+export interface LeaderboardEntry {
+  rank: number;
+  name: string;
+  initials: string;
+  progress: number;
+  you: boolean;
+}
+
 /** Local notification reminder preferences. */
 export interface ReminderPrefs {
   dailyLog: boolean;

@@ -89,6 +89,12 @@ export const api = {
 
   // ── Push announcements ──
   announce: <T>(body: unknown) => req<T>('POST', '/api/admin/announce', body),
+
+  // ── Challenges ──
+  listChallenges: <T>() => req<T[]>('GET', '/api/admin/challenges'),
+  createChallenge: <T>(body: unknown) => req<T>('POST', '/api/admin/challenges', body),
+  updateChallenge: <T>(id: string, body: unknown) => req<T>('PUT', `/api/admin/challenges/${id}`, body),
+  deleteChallenge: (id: string) => req('DELETE', `/api/admin/challenges/${id}`),
 };
 
 export { API_URL };

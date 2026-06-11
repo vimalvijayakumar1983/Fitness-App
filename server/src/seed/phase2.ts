@@ -214,6 +214,21 @@ export function seedPhase2(): void {
     )();
   }
 
+  if (count('challenges') === 0) {
+    const inDays = (d: number) => new Date(Date.now() + d * 864e5).toISOString();
+    const ins = db.prepare(
+      `INSERT INTO challenges (id,title,description,emoji,metric,goal,unit,start_at,end_at,active,created_at,updated_at)
+       VALUES (?,?,?,?,?,?,?,?,?,1,?,?)`,
+    );
+    const rows: [string, string, string, string, string, number, string][] = [
+      ['chal_steps', '7-Day Step Challenge', 'Walk 70,000 steps this week and climb the leaderboard.', '👟', 'steps', 70000, 'steps'],
+      ['chal_move', 'Move 150 Minutes', 'Hit the WHO target of 150 active minutes this week.', '🔥', 'active_minutes', 150, 'min'],
+      ['chal_glucose', 'Glucose Streak', 'Log 14 glucose readings this fortnight.', '🩸', 'glucose_logs', 14, 'logs'],
+    ];
+    db.transaction(() => rows.forEach(([id, title, desc, emoji, metric, goal, unit]) =>
+      ins.run(id, title, desc, emoji, metric, goal, unit, inDays(0), inDays(metric === 'glucose_logs' ? 14 : 7), t, t)))();
+  }
+
   if (count('companies') === 0) {
     db.prepare(
       `INSERT INTO companies (id,name,join_code,seats,contact_email,plan,created_at,updated_at)

@@ -16,6 +16,8 @@ import type {
   Coach,
   CoachBooking,
   Company,
+  Challenge,
+  LeaderboardEntry,
 } from '@/models/types';
 
 /**
@@ -262,6 +264,16 @@ export const api = {
   joinCompany: (code: string) =>
     request<{ company: Company }>('/company/join', { method: 'POST', body: { code } }),
   leaveCompany: () => request<{ ok: boolean }>('/company/leave', { method: 'POST' }),
+
+  // ── Challenges (community) ──
+  listChallenges: () => request<Challenge[]>('/challenges', { auth: false }),
+  myChallenges: () => request<Challenge[]>('/challenges/mine'),
+  joinChallenge: (id: string) => request<{ ok: boolean }>(`/challenges/${id}/join`, { method: 'POST' }),
+  leaveChallenge: (id: string) => request<{ ok: boolean }>(`/challenges/${id}/leave`, { method: 'POST' }),
+  setChallengeProgress: (id: string, progress: number) =>
+    request<{ ok: boolean; progress: number }>(`/challenges/${id}/progress`, { method: 'POST', body: { progress } }),
+  challengeLeaderboard: (id: string) =>
+    request<{ leaderboard: LeaderboardEntry[] }>(`/challenges/${id}/leaderboard`),
 
   // AI coach
   coachChat: (message: string, history?: { role: 'user' | 'assistant'; content: string }[], context?: string) =>
