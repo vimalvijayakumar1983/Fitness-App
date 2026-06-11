@@ -30,6 +30,7 @@ import { loadAppData, saveAppData } from '@/services/storage';
 import { getHealthProvider } from '@/services/health/healthService';
 import { api, fetchCmsContent, CmsContent, AssignedPlan, Subscription } from '@/services/api';
 import { syncReminders, registerForPush } from '@/services/notifications';
+import { initPurchases } from '@/services/purchases';
 import { useAuth } from '@/context/AuthContext';
 import { makeId, todayISO } from '@/utils/date';
 
@@ -85,7 +86,7 @@ interface DataContextValue {
 const DataContext = createContext<DataContextValue | undefined>(undefined);
 
 export function DataProvider({ children }: { children: React.ReactNode }) {
-  const { token } = useAuth();
+  const { token, user } = useAuth();
   const [data, setData] = useState<AppData>(emptyAppData);
   const [loading, setLoading] = useState(true);
   const [cms, setCms] = useState<CmsContent>({ foods: [], exercises: [], recipes: [] });
@@ -190,13 +191,14 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     if (data.reminders) void syncReminders(data.reminders);
   }, [loading, data.reminders]);
 
-  // Register for remote push when signed in (native only).
+  // Register for remote push + init in-app purchases when signed in (native).
   useEffect(() => {
-    if (!token) return;
+    if (!token || !user) return;
     registerForPush().then((pt) => {
       if (pt) api.registerPushToken(pt, Platform.OS).catch(() => {});
     });
-  }, [token]);
+    initPurchases(user.id).catch(() => {});
+  }, [token, user]);
 
   const addMeal = useCallback((meal: Omit<MealEntry, 'id' | 'loggedAt'>) => {
     setData((prev) => ({

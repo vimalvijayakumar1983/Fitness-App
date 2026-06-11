@@ -193,3 +193,39 @@ export async function billingWebhook(req: Request, res: Response) {
   }
   res.json({ received: true });
 }
+
+/**
+ * RevenueCat webhook for mobile (App Store / Play) purchases. Maps the
+ * entitlement/product to a plan and updates the subscription. Configure the
+ * webhook in RevenueCat with an Authorization header matching
+ * REVENUECAT_WEBHOOK_SECRET. The RC app_user_id is our user id (set at
+ * Purchases.configure time).
+ */
+export async function revenuecatWebhook(req: Request, res: Response) {
+  const secret = process.env.REVENUECAT_WEBHOOK_SECRET;
+  if (secret && req.headers['authorization'] !== secret) {
+    return res.status(401).json({ error: 'Bad webhook secret.' });
+  }
+  const event = (req.body?.event ?? {}) as any;
+  const userId: string | undefined = event.app_user_id;
+  if (!userId) return res.json({ received: true });
+
+  const type = String(event.type ?? '');
+  const product = String(event.product_id ?? '').toLowerCase();
+  const entitlements: string[] = event.entitlement_ids ?? (event.entitlement_id ? [event.entitlement_id] : []);
+  const tier = product.includes('coached') || entitlements.some((e) => e.toLowerCase().includes('coached')) ? 'coached' : 'premium';
+  const periodEnd = event.expiration_at_ms ? new Date(event.expiration_at_ms).toISOString() : undefined;
+
+  const ACTIVATE = ['INITIAL_PURCHASE', 'RENEWAL', 'PRODUCT_CHANGE', 'UNCANCELLATION', 'NON_RENEWING_PURCHASE'];
+  const CANCEL = ['CANCELLATION', 'EXPIRATION'];
+
+  if (ACTIVATE.includes(type)) {
+    await writeSub(userId, tier, 'active', 'revenuecat', undefined, periodEnd);
+  } else if (type === 'BILLING_ISSUE') {
+    await writeSub(userId, tier, 'canceling', 'revenuecat', undefined, periodEnd);
+  } else if (CANCEL.includes(type)) {
+    // Cancellation keeps access until expiry; expiration drops to free.
+    await writeSub(userId, type === 'EXPIRATION' ? 'free' : tier, type === 'EXPIRATION' ? 'canceled' : 'canceling', 'revenuecat', undefined, periodEnd);
+  }
+  res.json({ received: true });
+}

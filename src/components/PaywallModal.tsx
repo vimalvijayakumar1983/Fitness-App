@@ -5,6 +5,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useAuth } from '@/context/AuthContext';
 import { useData } from '@/context/DataContext';
 import { api, PricingConfig } from '@/services/api';
+import { iapAvailable, purchaseTier, restorePurchases } from '@/services/purchases';
 import { colors, gradients, hexA, radius, spacing, type } from '@/theme/colors';
 
 interface Props {
@@ -51,6 +52,19 @@ export function PaywallModal({ visible, onClose }: Props) {
     setMsg('');
     setBusy(tier);
     try {
+      // Native iOS/Android must use in-app purchase (App Store / Play rules).
+      if (Platform.OS !== 'web' && iapAvailable) {
+        const r = await purchaseTier(tier, interval);
+        if (r.success) {
+          refreshSubscription();
+          setMsg('🎉 You’re now subscribed!');
+          setTimeout(onClose, 900);
+        } else if (!r.cancelled) {
+          setMsg(r.message || 'Purchase could not be completed.');
+        }
+        return;
+      }
+
       const res = await api.checkout(tier, interval, currency);
       if (res.url) {
         if (Platform.OS === 'web') window.location.href = res.url;
@@ -136,6 +150,11 @@ export function PaywallModal({ visible, onClose }: Props) {
             ))}
 
             {msg ? <Text style={styles.msg}>{msg}</Text> : null}
+            {Platform.OS !== 'web' && iapAvailable ? (
+              <Pressable onPress={async () => { setMsg(await restorePurchases() ? 'Purchases restored.' : 'No purchases to restore.'); refreshSubscription(); }}>
+                <Text style={styles.restore}>Restore purchases</Text>
+              </Pressable>
+            ) : null}
             <Text style={styles.fine}>Cancel anytime. Prices may vary by region; you’re charged in your selected currency.</Text>
           </ScrollView>
         </SafeAreaView>
@@ -177,5 +196,6 @@ const styles = StyleSheet.create({
   ctaText: { fontWeight: '800', fontSize: 15, color: colors.text },
 
   msg: { ...type.body, color: colors.primaryDark, textAlign: 'center', marginVertical: spacing.sm, fontWeight: '600' },
+  restore: { ...type.caption, color: colors.primary, fontWeight: '700', textAlign: 'center', marginTop: spacing.sm },
   fine: { ...type.caption, textAlign: 'center', marginTop: spacing.sm, lineHeight: 18 },
 });

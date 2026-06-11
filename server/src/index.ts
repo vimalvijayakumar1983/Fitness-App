@@ -13,7 +13,7 @@ import { coachRouter } from './routes/coach';
 import { contentRouter } from './routes/content';
 import { syncRouter } from './routes/sync';
 import { adminRouter, mePlanRouter } from './routes/plans';
-import { billingRouter, billingWebhook } from './routes/billing';
+import { billingRouter, billingWebhook, revenuecatWebhook } from './routes/billing';
 import { labsRouter } from './routes/labs';
 import { programsRouter, coachesRouter, companyRouter, adminPhase2Router } from './routes/phase2';
 import { challengesRouter, adminChallengesRouter } from './routes/challenges';
@@ -28,6 +28,9 @@ app.post('/api/billing/webhook', express.raw({ type: 'application/json' }), bill
 
 // Photos for food analysis can be a few hundred KB of base64.
 app.use(express.json({ limit: '12mb' }));
+
+// RevenueCat (mobile IAP) webhook — JSON body is fine (auth via header secret).
+app.post('/api/billing/revenuecat', revenuecatWebhook);
 
 // CORS: open by default. Set CORS_ORIGINS to a comma-separated allowlist of
 // your admin + app URLs. Entries may be exact origins (https://app.com) or

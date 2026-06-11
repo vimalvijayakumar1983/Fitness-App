@@ -2,7 +2,7 @@
   "expo": {
     "name": "Al Zaabi Health",
     "slug": "fitness-app",
-    "version": "0.1.0",
+    "version": "1.0.0",
     "orientation": "portrait",
     "userInterfaceStyle": "light",
     "scheme": "fitnessapp",
@@ -13,21 +13,42 @@
     "assetBundlePatterns": ["**/*"],
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.fitnessapp.app",
+      "bundleIdentifier": "com.alzaabi.health",
+      "buildNumber": "1",
       "infoPlist": {
-        "NSHealthShareUsageDescription": "We use your health data to track exercise, steps and sleep.",
-        "NSHealthUpdateUsageDescription": "We log workouts you record in the app back to Apple Health."
+        "NSHealthShareUsageDescription": "We use your health data to track exercise, steps, sleep and heart rate.",
+        "NSHealthUpdateUsageDescription": "We log workouts you record in the app back to Apple Health.",
+        "NSCameraUsageDescription": "Take a photo of your meal so AI can estimate its calories and macros.",
+        "NSPhotoLibraryUsageDescription": "Upload a meal photo or a lab report for AI analysis.",
+        "ITSAppUsesNonExemptEncryption": false
       }
     },
     "android": {
-      "package": "com.fitnessapp.app",
+      "package": "com.alzaabi.health",
+      "versionCode": 1,
       "permissions": [
         "android.permission.ACTIVITY_RECOGNITION",
+        "android.permission.CAMERA",
         "android.permission.health.READ_STEPS",
         "android.permission.health.READ_EXERCISE",
         "android.permission.health.READ_SLEEP",
-        "android.permission.health.READ_HEART_RATE"
+        "android.permission.health.READ_HEART_RATE",
+        "android.permission.POST_NOTIFICATIONS"
       ]
+    },
+    "plugins": [
+      "expo-notifications",
+      [
+        "expo-build-properties",
+        {
+          "ios": { "deploymentTarget": "16.4" }
+        }
+      ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "REPLACE_VIA_EAS_INIT"
+      }
     }
   }
 }
