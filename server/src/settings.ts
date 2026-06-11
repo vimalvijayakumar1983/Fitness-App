@@ -36,3 +36,37 @@ export async function setSetting(key: string, value: unknown): Promise<void> {
 
 export const getPricing = (): Promise<Pricing> => getSetting<Pricing>('pricing', DEFAULT_PRICING);
 export const setPricing = (p: Pricing): Promise<void> => setSetting('pricing', p);
+
+/** Admin-editable onboarding / plan options (goals, activity levels, diets). */
+export interface OnboardingOptions {
+  goals: { key: string; label: string; calorieDelta: number }[];
+  activity: { label: string; value: number }[];
+  /** Macro split as integer percentages (protein+carbs+fat = 100). */
+  diets: { key: string; label: string; protein: number; carbs: number; fat: number }[];
+}
+
+export const DEFAULT_ONBOARDING: OnboardingOptions = {
+  goals: [
+    { key: 'lose', label: 'Lose weight', calorieDelta: -500 },
+    { key: 'maintain', label: 'Maintain', calorieDelta: 0 },
+    { key: 'gain', label: 'Build muscle', calorieDelta: 350 },
+  ],
+  activity: [
+    { label: 'Sedentary', value: 1.2 },
+    { label: 'Light', value: 1.375 },
+    { label: 'Moderate', value: 1.55 },
+    { label: 'Active', value: 1.725 },
+  ],
+  diets: [
+    { key: 'balanced', label: 'Balanced', protein: 30, carbs: 40, fat: 30 },
+    { key: 'high_protein', label: 'High protein', protein: 40, carbs: 35, fat: 25 },
+    { key: 'keto', label: 'Keto', protein: 25, carbs: 5, fat: 70 },
+    { key: 'low_carb', label: 'Low carb', protein: 35, carbs: 20, fat: 45 },
+    { key: 'mediterranean', label: 'Mediterranean', protein: 25, carbs: 45, fat: 30 },
+    { key: 'vegetarian', label: 'Vegetarian', protein: 25, carbs: 45, fat: 30 },
+    { key: 'vegan', label: 'Vegan', protein: 22, carbs: 50, fat: 28 },
+  ],
+};
+
+export const getOnboarding = (): Promise<OnboardingOptions> => getSetting<OnboardingOptions>('onboarding', DEFAULT_ONBOARDING);
+export const setOnboarding = (o: OnboardingOptions): Promise<void> => setSetting('onboarding', o);

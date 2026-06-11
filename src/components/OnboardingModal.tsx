@@ -1,21 +1,20 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { TextField } from './TextField';
 import { PrimaryButton } from './PrimaryButton';
 import { useData } from '@/context/DataContext';
+import { api } from '@/services/api';
 import { colors, gradients, radius, spacing, type } from '@/theme/colors';
-import type { DietPattern, GoalType, Profile } from '@/models/types';
-import { ACTIVITY_LEVELS, DIET_LABELS, GOAL_LABELS, computeTargets } from '@/utils/targets';
+import type { Profile } from '@/models/types';
+import { DEFAULT_ONBOARDING, OnboardingOptions, targetsFromOptions } from '@/utils/targets';
 
 interface Props {
   visible: boolean;
   onDone: () => void;
 }
 
-const GOALS: GoalType[] = ['lose', 'maintain', 'gain'];
-const DIETS: DietPattern[] = ['balanced', 'high_protein', 'keto', 'low_carb', 'mediterranean', 'vegetarian', 'vegan'];
 const SEXES: Profile['sex'][] = ['male', 'female', 'other'];
 const STEPS = ['Goal', 'About you', 'Body', 'Activity', 'Diet', 'Your plan'];
 
@@ -23,14 +22,20 @@ const STEPS = ['Goal', 'About you', 'Body', 'Activity', 'Diet', 'Your plan'];
 export function OnboardingModal({ visible, onDone }: Props) {
   const { data, updateProfile } = useData();
   const p = data.profile;
+  const [opts, setOpts] = useState<OnboardingOptions>(DEFAULT_ONBOARDING);
   const [step, setStep] = useState(0);
-  const [goal, setGoal] = useState<GoalType>(p.goal);
+  const [goal, setGoal] = useState<string>(p.goal);
   const [sex, setSex] = useState<Profile['sex']>(p.sex);
   const [age, setAge] = useState(String(p.age));
   const [height, setHeight] = useState(String(p.heightCm));
   const [weight, setWeight] = useState(String(p.weightKg));
   const [activityLevel, setActivityLevel] = useState(p.activityLevel);
-  const [diet, setDiet] = useState<DietPattern>(p.diet);
+  const [diet, setDiet] = useState<string>(p.diet);
+
+  // Pull admin-defined options (goals, activity, diets); fall back to bundled.
+  useEffect(() => {
+    if (visible) api.getOnboardingOptions().then(setOpts).catch(() => {});
+  }, [visible]);
 
   const draft: Profile = useMemo(
     () => ({
@@ -41,7 +46,9 @@ export function OnboardingModal({ visible, onDone }: Props) {
     }),
     [p, goal, sex, diet, activityLevel, age, height, weight],
   );
-  const targets = useMemo(() => computeTargets(draft), [draft]);
+  const targets = useMemo(() => targetsFromOptions(draft, opts), [draft, opts]);
+  const goalText = opts.goals.find((g) => g.key === goal)?.label ?? goal;
+  const dietText = opts.diets.find((d) => d.key === diet)?.label ?? diet;
 
   const finish = () => {
     updateProfile({
@@ -76,7 +83,7 @@ export function OnboardingModal({ visible, onDone }: Props) {
               <>
                 <Text style={styles.q}>What's your goal?</Text>
                 <View style={styles.chips}>
-                  {GOALS.map((g) => <Chip key={g} label={GOAL_LABELS[g]} active={goal === g} onPress={() => setGoal(g)} big />)}
+                  {opts.goals.map((g) => <Chip key={g.key} label={g.label} active={goal === g.key} onPress={() => setGoal(g.key)} big />)}
                 </View>
               </>
             )}
@@ -101,7 +108,7 @@ export function OnboardingModal({ visible, onDone }: Props) {
               <>
                 <Text style={styles.q}>How active are you?</Text>
                 <View style={styles.chips}>
-                  {ACTIVITY_LEVELS.map((a) => <Chip key={a.label} label={a.label} active={activityLevel === a.value} onPress={() => setActivityLevel(a.value)} />)}
+                  {opts.activity.map((a) => <Chip key={a.label} label={a.label} active={activityLevel === a.value} onPress={() => setActivityLevel(a.value)} />)}
                 </View>
               </>
             )}
@@ -109,7 +116,7 @@ export function OnboardingModal({ visible, onDone }: Props) {
               <>
                 <Text style={styles.q}>Pick your diet</Text>
                 <View style={styles.chips}>
-                  {DIETS.map((d) => <Chip key={d} label={DIET_LABELS[d]} active={diet === d} onPress={() => setDiet(d)} />)}
+                  {opts.diets.map((d) => <Chip key={d.key} label={d.label} active={diet === d.key} onPress={() => setDiet(d.key)} />)}
                 </View>
               </>
             )}
@@ -126,7 +133,7 @@ export function OnboardingModal({ visible, onDone }: Props) {
                   </View>
                 </LinearGradient>
                 <Text style={styles.projection}>
-                  On track for your {GOAL_LABELS[goal].toLowerCase()} goal with a {DIET_LABELS[diet].toLowerCase()} plan. You can fine-tune this anytime.
+                  On track for your {goalText.toLowerCase()} goal with a {dietText.toLowerCase()} plan. You can fine-tune this anytime.
                 </Text>
               </>
             )}

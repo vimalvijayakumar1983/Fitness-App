@@ -3,9 +3,10 @@ import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-nati
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { TextField } from './TextField';
+import { api } from '@/services/api';
 import { colors, gradients, radius, spacing, type } from '@/theme/colors';
-import type { DietPattern, GoalType, Profile } from '@/models/types';
-import { ACTIVITY_LEVELS, DIET_LABELS, GOAL_LABELS, computeTargets } from '@/utils/targets';
+import type { Profile } from '@/models/types';
+import { DEFAULT_ONBOARDING, OnboardingOptions, targetsFromOptions } from '@/utils/targets';
 
 interface Props {
   visible: boolean;
@@ -14,18 +15,21 @@ interface Props {
   onSave: (patch: Partial<Profile>) => void;
 }
 
-const GOALS: GoalType[] = ['lose', 'maintain', 'gain'];
-const DIETS: DietPattern[] = ['balanced', 'high_protein', 'keto', 'low_carb', 'mediterranean', 'vegetarian', 'vegan'];
 const SEXES: Profile['sex'][] = ['male', 'female', 'other'];
 
 export function GoalSetupModal({ visible, profile, onClose, onSave }: Props) {
-  const [goal, setGoal] = useState<GoalType>(profile.goal);
-  const [diet, setDiet] = useState<DietPattern>(profile.diet);
+  const [opts, setOpts] = useState<OnboardingOptions>(DEFAULT_ONBOARDING);
+  const [goal, setGoal] = useState<string>(profile.goal);
+  const [diet, setDiet] = useState<string>(profile.diet);
   const [sex, setSex] = useState<Profile['sex']>(profile.sex);
   const [activityLevel, setActivityLevel] = useState(profile.activityLevel);
   const [weight, setWeight] = useState(String(profile.weightKg));
   const [height, setHeight] = useState(String(profile.heightCm));
   const [age, setAge] = useState(String(profile.age));
+
+  useEffect(() => {
+    if (visible) api.getOnboardingOptions().then(setOpts).catch(() => {});
+  }, [visible]);
 
   useEffect(() => {
     if (!visible) return;
@@ -52,7 +56,7 @@ export function GoalSetupModal({ visible, profile, onClose, onSave }: Props) {
     [profile, goal, diet, sex, activityLevel, weight, height, age],
   );
 
-  const targets = useMemo(() => computeTargets(draft), [draft]);
+  const targets = useMemo(() => targetsFromOptions(draft, opts), [draft, opts]);
 
   const save = () => {
     onSave({
@@ -86,21 +90,21 @@ export function GoalSetupModal({ visible, profile, onClose, onSave }: Props) {
           <ScrollView contentContainerStyle={styles.body} keyboardShouldPersistTaps="handled">
             <Text style={styles.sectionLabel}>Goal</Text>
             <View style={styles.chips}>
-              {GOALS.map((g) => (
-                <Chip key={g} label={GOAL_LABELS[g]} active={goal === g} onPress={() => setGoal(g)} />
+              {opts.goals.map((g) => (
+                <Chip key={g.key} label={g.label} active={goal === g.key} onPress={() => setGoal(g.key)} />
               ))}
             </View>
 
             <Text style={styles.sectionLabel}>Diet</Text>
             <View style={styles.chips}>
-              {DIETS.map((d) => (
-                <Chip key={d} label={DIET_LABELS[d]} active={diet === d} onPress={() => setDiet(d)} />
+              {opts.diets.map((d) => (
+                <Chip key={d.key} label={d.label} active={diet === d.key} onPress={() => setDiet(d.key)} />
               ))}
             </View>
 
             <Text style={styles.sectionLabel}>Activity</Text>
             <View style={styles.chips}>
-              {ACTIVITY_LEVELS.map((a) => (
+              {opts.activity.map((a) => (
                 <Chip key={a.label} label={a.label} active={activityLevel === a.value} onPress={() => setActivityLevel(a.value)} />
               ))}
             </View>

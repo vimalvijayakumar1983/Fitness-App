@@ -104,8 +104,10 @@ export interface MacroTargets {
 /** User profile drives calorie/macro targets and plan generation. */
 export interface Profile {
   name: string;
-  goal: GoalType;
-  diet: DietPattern;
+  /** Option key (defaults to a GoalType, but admin-defined keys are allowed). */
+  goal: string;
+  /** Option key (defaults to a DietPattern, but admin-defined keys are allowed). */
+  diet: string;
   /** Daily calorie target (kcal). */
   calorieTarget: number;
   macroTargets: MacroTargets;

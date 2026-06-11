@@ -19,6 +19,7 @@ import type {
   Challenge,
   LeaderboardEntry,
 } from '@/models/types';
+import type { OnboardingOptions } from '@/utils/targets';
 
 /**
  * Base URL comes from EXPO_PUBLIC_API_URL (inlined at build time). When unset,
@@ -243,6 +244,7 @@ export const api = {
   // CMS content (admin-managed; public reads)
   contentAll: () => request<CmsContent>('/content/all', { auth: false }),
   getPricing: () => request<PricingConfig>('/content/pricing', { auth: false }),
+  getOnboardingOptions: () => request<OnboardingOptions>('/content/onboarding', { auth: false }),
 
   // ── Phase 2: condition-reversal programs ──
   listPrograms: () => request<Program[]>('/programs', { auth: false }),

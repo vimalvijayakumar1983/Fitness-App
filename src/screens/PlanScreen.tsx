@@ -15,7 +15,7 @@ import { colors, gradients, radius, spacing, type } from '@/theme/colors';
 import type { GoalType, MealType, Recipe } from '@/models/types';
 import { mergeRecipes, recipesById } from '@/data/recipes';
 import { recipeImage } from '@/utils/images';
-import { computeTargets, DIET_LABELS, GOAL_LABELS } from '@/utils/targets';
+import { computeTargets, GOAL_LABELS, goalLabel, dietLabel } from '@/utils/targets';
 import { adherenceScore, generatePlan, groceryFromPlan, planTotals } from '@/utils/planner';
 import { summarizeMacros } from '@/utils/selectors';
 import { todayISO } from '@/utils/date';
@@ -123,7 +123,7 @@ export function PlanScreen() {
         trailing={<Pressable onPress={() => setSetupOpen(true)}><Text style={styles.edit}>Edit</Text></Pressable>}
       >
         <Text style={type.metric}>{profile.calorieTarget}<Text style={styles.unit}> kcal/day</Text></Text>
-        <Text style={styles.sub}>{GOAL_LABELS[profile.goal]} · {DIET_LABELS[profile.diet]}</Text>
+        <Text style={styles.sub}>{goalLabel(profile.goal)} · {dietLabel(profile.diet)}</Text>
         <View style={styles.targetMacros}>
           <Tag label={`P ${profile.macroTargets.protein}g`} color={colors.exercise} />
           <Tag label={`C ${profile.macroTargets.carbs}g`} color={colors.sleep} />
@@ -151,7 +151,7 @@ export function PlanScreen() {
       >
         {!plan ? (
           <>
-            <Text style={styles.hint}>Generate a day of meals matched to your {DIET_LABELS[profile.diet].toLowerCase()} target of {profile.calorieTarget} kcal.{!isPremium ? '  ✨ Premium' : ''}</Text>
+            <Text style={styles.hint}>Generate a day of meals matched to your {dietLabel(profile.diet).toLowerCase()} target of {profile.calorieTarget} kcal.{!isPremium ? '  ✨ Premium' : ''}</Text>
             <PrimaryButton label={isPremium ? '✨ Generate my plan' : '🔒 Generate my plan (Premium)'} onPress={() => requirePremium(() => setPlan(generatePlan(profile, today, allRecipes)))} gradient={gradients.primary} style={{ marginTop: spacing.lg }} />
           </>
         ) : (

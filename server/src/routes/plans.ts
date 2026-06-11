@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { db } from '../db';
 import { AuthedRequest, requireAuth, requireAdmin } from '../auth';
 import { makeId } from '../util';
-import { getPricing, setPricing, Pricing } from '../settings';
+import { getPricing, setPricing, Pricing, getOnboarding, setOnboarding, OnboardingOptions } from '../settings';
 import { importCatalog } from '../seed/content';
 import { sendPush, tokensForUsers } from '../push';
 
@@ -175,6 +175,20 @@ adminRouter.put('/pricing', async (req: Request, res: Response) => {
   if (!p?.premium || !p?.coached) return res.status(400).json({ error: 'Invalid pricing.' });
   await setPricing(p);
   res.json(await getPricing());
+});
+
+// ───────────────── Onboarding / plan options (settings) ─────────────────
+adminRouter.get('/onboarding-options', async (_req, res) => res.json(await getOnboarding()));
+adminRouter.put('/onboarding-options', async (req: Request, res: Response) => {
+  const o = req.body as OnboardingOptions;
+  if (!Array.isArray(o?.goals) || !Array.isArray(o?.activity) || !Array.isArray(o?.diets)) {
+    return res.status(400).json({ error: 'Invalid onboarding options.' });
+  }
+  if (!o.goals.length || !o.activity.length || !o.diets.length) {
+    return res.status(400).json({ error: 'Each section needs at least one option.' });
+  }
+  await setOnboarding(o);
+  res.json(await getOnboarding());
 });
 
 // ───────────────────── Push announcements (broadcast) ─────────────────────

@@ -87,6 +87,10 @@ export const api = {
   getPricing: <T>() => req<T>('GET', '/api/admin/pricing'),
   savePricing: <T>(body: unknown) => req<T>('PUT', '/api/admin/pricing', body),
 
+  // ── Onboarding / plan options ──
+  getOnboarding: <T>() => req<T>('GET', '/api/admin/onboarding-options'),
+  saveOnboarding: <T>(body: unknown) => req<T>('PUT', '/api/admin/onboarding-options', body),
+
   // ── Push announcements ──
   announce: <T>(body: unknown) => req<T>('POST', '/api/admin/announce', body),
 
